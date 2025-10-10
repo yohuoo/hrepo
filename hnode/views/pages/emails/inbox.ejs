@@ -1,0 +1,419 @@
+<div class="row">
+  <div class="col-12 mb-3">
+    <h2><i class="bi bi-inbox"></i> 收件箱</h2>
+  </div>
+</div>
+
+<!-- 筛选工具栏 -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <input type="text" class="form-control" id="searchKeyword" placeholder="搜索标题、内容...">
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" id="filterSendAddress" placeholder="发件人邮箱...">
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" id="filterCustomer">
+          <option value="">所有客户</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" onclick="searchEmails()">
+          <i class="bi bi-search"></i> 搜索
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 邮件列表 -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>共 <span id="totalCount">0</span> 封邮件</span>
+    <button class="btn btn-sm btn-outline-secondary" onclick="refreshEmails()">
+      <i class="bi bi-arrow-clockwise"></i> 刷新
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <div id="emailList">
+      <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 分页 -->
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center" id="pagination">
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- 邮件详情模态框 -->
+<div class="modal fade" id="emailDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="emailDetailTitle">邮件详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="emailDetailBody">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-primary" onclick="replyEmail()">
+          <i class="bi bi-reply"></i> 回复
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+let currentEmailId = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('✅ 收件箱页面已加载');
+  await loadCustomerOptions();
+  await loadEmails();
+  
+  // 搜索防抖
+  const searchInput = document.getElementById('searchKeyword');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(searchEmails, 500));
+  }
+});
+
+async function loadCustomerOptions() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/customers/?pageSize=100', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.customers) {
+      let options = '<option value="">所有客户</option>';
+      data.customers.forEach(customer => {
+        options += `<option value="${customer.id}">${customer.name} (${customer.company})</option>`;
+      });
+      
+      const filterCustomer = document.getElementById('filterCustomer');
+      if (filterCustomer) {
+        filterCustomer.innerHTML = options;
+      }
+    }
+  } catch (error) {
+    console.error('❌ 加载客户列表失败:', error);
+  }
+}
+
+async function loadEmails(page = 1) {
+  try {
+    console.log('🔄 加载收件箱邮件，页码:', page);
+    
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showWarning('请先登录');
+      window.location.href = '/login';
+      return;
+    }
+    
+    // 构建查询参数
+    let queryParams = `email_type=received&page=${page}&pageSize=20`;
+    if (currentFilters.query) queryParams += `&query=${encodeURIComponent(currentFilters.query)}`;
+    if (currentFilters.send_address) queryParams += `&send_address=${encodeURIComponent(currentFilters.send_address)}`;
+    if (currentFilters.customer_id) queryParams += `&customer_id=${currentFilters.customer_id}`;
+    
+    const url = `/api/email-history/?${queryParams}`;
+    console.log('📍 请求URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 邮件数据:', data);
+    
+    if (!data.success) {
+      showError('加载邮件失败: ' + (data.message || '未知错误'));
+      const emailList = document.getElementById('emailList');
+      if (emailList) {
+        emailList.innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+      }
+      return;
+    }
+    
+    currentPage = page;
+    
+    // 更新总数
+    const totalCountElement = document.getElementById('totalCount');
+    if (totalCountElement) {
+      totalCountElement.textContent = data.total || 0;
+    }
+    
+    // 渲染邮件列表
+    renderEmailList(data.email_history || []);
+    
+    // 渲染分页
+    renderPagination(data.page, data.total_pages, data.total);
+    
+  } catch (error) {
+    console.error('❌ 加载邮件失败:', error);
+    showError('加载邮件失败: ' + error.message);
+    const emailList = document.getElementById('emailList');
+    if (emailList) {
+      emailList.innerHTML = '<div class="empty-state"><p>加载失败: ' + error.message + '</p></div>';
+    }
+  }
+}
+
+function renderEmailList(emails) {
+  const emailList = document.getElementById('emailList');
+  if (!emailList) return;
+  
+  if (emails.length === 0) {
+    emailList.innerHTML = `
+      <div class="empty-state p-5 text-center">
+        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+        <h5 class="mt-3">收件箱为空</h5>
+        <p class="text-muted">暂无收到的邮件</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  emails.forEach(email => {
+    const customerInfo = email.customer ? `${email.customer.name} (${email.customer.company})` : '未知';
+    
+    html += `
+      <div class="email-item p-3 border-bottom" style="cursor: pointer;" onclick="showEmailDetail(${email.id})">
+        <div class="d-flex justify-content-between">
+          <div class="flex-grow-1">
+            <div class="email-sender mb-1">
+              <i class="bi bi-envelope"></i> <strong>${email.send_address}</strong>
+              ${email.customer ? `<span class="badge bg-info ms-2">${customerInfo}</span>` : ''}
+            </div>
+            <div class="email-subject fw-bold mb-1">${email.title || '(无主题)'}</div>
+            <div class="email-preview text-muted small">${(email.content || '').substring(0, 100)}...</div>
+          </div>
+          <div class="text-end ms-3">
+            <div class="email-time text-muted small">${formatDate(email.send_time)}</div>
+            ${email.parent_email_id ? '<span class="badge bg-secondary mt-2"><i class="bi bi-reply"></i> 回复</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  emailList.innerHTML = html;
+  console.log(`✅ 渲染了 ${emails.length} 封邮件`);
+}
+
+function renderPagination(current, total, count) {
+  const pagination = document.getElementById('pagination');
+  if (!pagination) return;
+  
+  if (total <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadEmails(${current - 1}); return false;">上一页</a>
+    </li>
+  `;
+  
+  // 页码
+  for (let i = 1; i <= Math.min(total, 5); i++) {
+    html += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="loadEmails(${i}); return false;">${i}</a>
+      </li>
+    `;
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadEmails(${current + 1}); return false;">下一页</a>
+    </li>
+  `;
+  
+  pagination.innerHTML = html;
+}
+
+function searchEmails() {
+  currentFilters = {};
+  
+  const keyword = document.getElementById('searchKeyword')?.value;
+  const sendAddress = document.getElementById('filterSendAddress')?.value;
+  const customerId = document.getElementById('filterCustomer')?.value;
+  
+  if (keyword) currentFilters.query = keyword;
+  if (sendAddress) currentFilters.send_address = sendAddress;
+  if (customerId) currentFilters.customer_id = customerId;
+  
+  loadEmails(1);
+}
+
+function refreshEmails() {
+  loadEmails(currentPage);
+}
+
+async function showEmailDetail(emailId) {
+  try {
+    currentEmailId = emailId;
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/email-history/${emailId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 邮件详情:', data);
+    
+    if (!data.success) {
+      showError('加载邮件详情失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    const email = data.email_history;
+    
+    const html = `
+      <div class="mb-3">
+        <strong>发件人:</strong> ${email.send_address}
+      </div>
+      <div class="mb-3">
+        <strong>收件人:</strong> ${email.receive_address}
+      </div>
+      <div class="mb-3">
+        <strong>主题:</strong> ${email.title || '(无主题)'}
+      </div>
+      <div class="mb-3">
+        <strong>时间:</strong> ${new Date(email.send_time).toLocaleString('zh-CN')}
+      </div>
+      ${email.customer ? `
+        <div class="mb-3">
+          <strong>关联客户:</strong> ${email.customer.name} (${email.customer.company})
+        </div>
+      ` : ''}
+      <hr>
+      <div class="mb-3">
+        <strong>内容:</strong>
+        <div class="mt-2 p-3 bg-light rounded" style="white-space: pre-line;">${email.content ? email.content.trim() : '(无内容)'}</div>
+      </div>
+    `;
+    
+    const emailDetailBody = document.getElementById('emailDetailBody');
+    if (emailDetailBody) {
+      emailDetailBody.innerHTML = html;
+    }
+    
+    new bootstrap.Modal(document.getElementById('emailDetailModal')).show();
+  } catch (error) {
+    console.error('❌ 加载邮件详情失败:', error);
+    showError('加载邮件详情失败: ' + error.message);
+  }
+}
+
+// 回复邮件
+async function replyEmail() {
+  if (!currentEmailId) {
+    showError('请先选择要回复的邮件');
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    // 获取邮件详情
+    const response = await fetch(`/api/email-history/${currentEmailId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取邮件信息失败');
+      return;
+    }
+    
+    const email = data.email_history;
+    
+    // 将回复信息存储到 sessionStorage，在写邮件页面使用
+    const replyData = {
+      originalEmailId: email.id,
+      replyTo: email.send_address,
+      originalSubject: email.title || '(无主题)',
+      originalContent: email.content || '',
+      originalSender: email.send_address,
+      originalTime: email.send_time
+    };
+    
+    sessionStorage.setItem('replyData', JSON.stringify(replyData));
+    
+    // 关闭详情模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('emailDetailModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    // 跳转到写邮件页面
+    window.location.href = '/emails/compose';
+    
+  } catch (error) {
+    console.error('❌ 回复邮件失败:', error);
+    showError('回复邮件失败: ' + error.message);
+  }
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+</script>

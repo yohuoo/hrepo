@@ -1,0 +1,1142 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/emails">邮件</a></li>
+        <li class="breadcrumb-item active">邮件模板</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">邮件模板</h1>
+  </div>
+</div>
+
+<!-- 搜索和操作区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-8">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" id="searchKeyword" placeholder="搜索模板标题或内容...">
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="showTemplatePreview()">
+            <i class="bi bi-eye"></i> 预览模板
+          </button>
+          <button class="btn btn-primary" onclick="createNewTemplate()">
+            <i class="bi bi-plus-lg"></i> 新建模板
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模板列表 -->
+<div class="row" id="templateList">
+  <div class="col-12 text-center p-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">加载中...</span>
+    </div>
+  </div>
+</div>
+
+<!-- 新建模板模态框 -->
+<div class="modal fade" id="addTemplateModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">新建邮件</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- 左侧：邮件模板和个性化变量 -->
+          <div class="col-md-4">
+            <!-- 邮件模板 -->
+            <div class="card mb-3">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">邮件模板</h6>
+                <button class="btn btn-sm btn-primary" onclick="createNewTemplate()">
+                  <i class="bi bi-plus"></i> 新建
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <select class="form-select" id="templateSelect" onchange="loadTemplate()">
+                    <option value="">选择模板</option>
+                  </select>
+                </div>
+                <div id="templateList">
+                  <!-- 模板列表将通过JavaScript动态加载 -->
+                </div>
+              </div>
+            </div>
+            
+            <!-- 个性化变量 -->
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">个性化变量</h6>
+              </div>
+              <div class="card-body">
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="insertVariable('{{firstName}}')">
+                    {{firstName}}
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="insertVariable('{{lastName}}')">
+                    {{lastName}}
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="insertVariable('{{companyName}}')">
+                    {{companyName}}
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" onclick="insertVariable('{{position}}')">
+                    {{position}}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 右侧：邮件编辑器 -->
+          <div class="col-md-8">
+            <div class="card">
+              <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">邮件编辑器</h6>
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="saveDraft()">
+                      <i class="bi bi-floppy"></i> 保存草稿
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="previewEmail()">
+                      <i class="bi bi-eye"></i> 发送预览
+                    </button>
+                    <div class="dropdown">
+                      <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-send"></i> 发送
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="sendEmail('immediate')">立即发送</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="sendEmail('scheduled')">定时发送</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <form id="emailForm">
+                  <div class="mb-3">
+                    <label class="form-label">收件人</label>
+                    <input type="text" class="form-control" id="recipients" placeholder="请选择收件人" readonly>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="selectRecipients()">
+                      <i class="bi bi-pencil"></i> 编辑收件人
+                    </button>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">主题</label>
+                    <input type="text" class="form-control" id="emailSubject" placeholder="请输入邮件主题">
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">内容</label>
+                    <div class="toolbar mb-2">
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="formatText('bold')">
+                          <strong>B</strong>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="formatText('italic')">
+                          <em>I</em>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="formatText('underline')">
+                          <u>U</u>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="insertList('unordered')">
+                          <i class="bi bi-list-ul"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="insertList('ordered')">
+                          <i class="bi bi-list-ol"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="insertLink()">
+                          <i class="bi bi-link"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="insertImage()">
+                          <i class="bi bi-image"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <textarea class="form-control" id="emailContent" rows="15" placeholder="Dear {{firstName}},&#10;&#10;I hope this email finds you well..."></textarea>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveTemplate()">保存模板</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 收件人选择模态框 -->
+<div class="modal fade" id="recipientSelectModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">选择收件人</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h6>搜索和筛选</h6>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <input type="text" class="form-control" placeholder="搜索联系人" id="contactSearch">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">按标签筛选</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="tagPotential">
+                    <label class="form-check-label" for="tagPotential">潜在客户</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="tagConverted">
+                    <label class="form-check-label" for="tagConverted">已成交客户</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="tagKey">
+                    <label class="form-check-label" for="tagKey">重点客户</label>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">按公司筛选</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="company1">
+                    <label class="form-check-label" for="company1">Apple Inc.</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="company2">
+                    <label class="form-check-label" for="company2">Microsoft</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="company3">
+                    <label class="form-check-label" for="company3">Google</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="card">
+              <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">联系人列表</h6>
+                  <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectAllContacts()">全选</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">筛选</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="contactList">
+                  <!-- 联系人列表将通过JavaScript动态加载 -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <span id="selectedContactsCount">已选择 0 人</span>
+          <div>
+            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-primary" onclick="confirmRecipients()">确定</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 全局变量
+let currentTemplates = [];
+let selectedRecipients = [];
+let currentTemplate = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('✅ 邮件模板页面已加载');
+  
+  // 初始化收件人显示
+  updateRecipientDisplay();
+  
+  // 加载模板列表
+  await loadTemplates();
+  
+  // 搜索功能
+  const searchInput = document.getElementById('searchKeyword');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(searchTemplates, 500));
+  }
+});
+
+// 更新收件人显示
+function updateRecipientDisplay() {
+  const recipientsInput = document.getElementById('recipients');
+  if (recipientsInput) {
+    if (selectedRecipients.length === 0) {
+      recipientsInput.value = '';
+      recipientsInput.placeholder = '请选择收件人';
+    } else {
+      recipientsInput.value = `已选择 ${selectedRecipients.length} 位联系人`;
+    }
+  }
+}
+
+// 加载模板列表
+async function loadTemplates() {
+  try {
+    const response = await axios.get('/api/email-templates/');
+    currentTemplates = response.data.templates || [];
+    
+    if (currentTemplates.length === 0) {
+      $('#templateList').html(`
+        <div class="col-12">
+          <div class="empty-state">
+            <i class="bi bi-file-earmark-text"></i>
+            <h5>暂无模板</h5>
+            <p>创建您的第一个邮件模板</p>
+          </div>
+        </div>
+      `);
+      return;
+    }
+    
+    renderTemplateList(currentTemplates);
+  } catch (error) {
+    console.error('加载模板失败:', error);
+    showToast('加载模板失败', 'danger');
+  }
+}
+
+// 渲染模板列表
+function renderTemplateList(templates) {
+  let html = '';
+  templates.forEach(template => {
+    const variables = extractVariables(template.content);
+    html += `
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card template-card" onclick="editTemplate(${template.id})" style="cursor: pointer;">
+          <div class="card-body">
+            <h6 class="card-title">${template.title}</h6>
+            <p class="card-text text-truncate-3">${template.content.substring(0, 100)}...</p>
+            <div class="mt-2">
+              ${variables.map(v => `<span class="badge bg-info me-1">{{${v}}}</span>`).join('')}
+            </div>
+            <div class="mt-3">
+              <small class="text-muted">创建时间: ${formatDate(template.created_at)}</small>
+            </div>
+          </div>
+          <div class="card-footer" onclick="event.stopPropagation();">
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-sm btn-outline-primary" onclick="editTemplate(${template.id})">
+                <i class="bi bi-pencil"></i> 编辑
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteTemplate(${template.id})">
+                <i class="bi bi-trash"></i> 删除
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  $('#templateList').html(html);
+}
+
+// 搜索模板
+function searchTemplates() {
+  const keyword = $('#searchKeyword').val().toLowerCase();
+  
+  if (!keyword) {
+    renderTemplateList(currentTemplates);
+    return;
+  }
+  
+  const filtered = currentTemplates.filter(template => 
+    template.title.toLowerCase().includes(keyword) ||
+    template.content.toLowerCase().includes(keyword)
+  );
+  
+  renderTemplateList(filtered);
+}
+
+// 提取变量
+function extractVariables(content) {
+  const matches = content.match(/\{\{([^}]+)\}\}/g);
+  return matches ? [...new Set(matches.map(m => m.replace(/[{}]/g, '')))] : [];
+}
+
+// 新建模板
+function createNewTemplate() {
+  console.log('✅ 点击新建模板');
+  
+  // 创建新建模板模态框（如果不存在）
+  let templateModal = document.getElementById('createTemplateModal');
+  if (!templateModal) {
+    const modalHTML = `
+      <div class="modal fade" id="createTemplateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg" style="max-width: 800px;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-file-earmark-plus"></i> 新建邮件模板</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <!-- 左侧：输入区域 -->
+                <div class="col-md-9">
+                  <div class="mb-3">
+                    <label class="form-label">模板标题</label>
+                    <input type="text" class="form-control" id="newTemplateTitle" placeholder="请输入模板标题">
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">模板内容</label>
+                    <textarea class="form-control" id="newTemplateContent" rows="12" placeholder="请输入模板内容，可以使用右侧的个性化变量"></textarea>
+                  </div>
+                </div>
+                
+                <!-- 右侧：个性化变量 -->
+                <div class="col-md-3">
+                  <label class="form-label">个性化变量</label>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="insertVariableToNewTemplate('{{firstName}}')" title="插入收件人名字">
+                      <i class="bi bi-person"></i> {{firstName}}
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="insertVariableToNewTemplate('{{lastName}}')" title="插入收件人姓氏">
+                      <i class="bi bi-person-badge"></i> {{lastName}}
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="insertVariableToNewTemplate('{{company}}')" title="插入公司名称">
+                      <i class="bi bi-building"></i> {{company}}
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="insertVariableToNewTemplate('{{position}}')" title="插入职位">
+                      <i class="bi bi-briefcase"></i> {{position}}
+                    </button>
+                  </div>
+                  
+                  <div class="mt-3 p-2 bg-light rounded">
+                    <small class="text-muted">
+                      <i class="bi bi-info-circle"></i> 点击上方按钮可将变量插入到光标位置
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" class="btn btn-primary" onclick="saveNewTemplate()">
+                <i class="bi bi-check-lg"></i> 保存模板
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+  
+  // 清空表单
+  const titleInput = document.getElementById('newTemplateTitle');
+  const contentInput = document.getElementById('newTemplateContent');
+  if (titleInput) titleInput.value = '';
+  if (contentInput) contentInput.value = '';
+  
+  // 显示模态框
+  const modal = new bootstrap.Modal(document.getElementById('createTemplateModal'));
+  modal.show();
+}
+
+// 插入变量到新建模板
+function insertVariableToNewTemplate(variable) {
+  const textarea = document.getElementById('newTemplateContent');
+  if (!textarea) return;
+  
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const content = textarea.value;
+  
+  textarea.value = content.substring(0, start) + variable + content.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+  textarea.focus();
+  
+  console.log('✅ 插入变量:', variable);
+}
+
+// 保存新建模板
+async function saveNewTemplate() {
+  const title = document.getElementById('newTemplateTitle').value.trim();
+  const content = document.getElementById('newTemplateContent').value.trim();
+  
+  if (!title) {
+    showError('请输入模板标题');
+    return;
+  }
+  
+  if (!content) {
+    showError('请输入模板内容');
+    return;
+  }
+  
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔄 创建新模板...');
+    console.log('标题:', title);
+    console.log('内容:', content);
+    
+    const response = await fetch('/api/email-templates/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: title,
+        content: content
+      })
+    });
+    
+    const data = await response.json();
+    console.log('📥 创建结果:', data);
+    
+    if (!data.success) {
+      showError('创建失败: ' + (data.message || '未知错误'));
+      hideLoading();
+      return;
+    }
+    
+    showSuccess('模板创建成功！');
+    
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('createTemplateModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    // 重新加载模板列表
+    await loadTemplates();
+    
+  } catch (error) {
+    console.error('❌ 创建模板失败:', error);
+    showError('创建模板失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 加载模板到编辑器
+function loadTemplate() {
+  const templateId = $('#templateSelect').val();
+  if (!templateId) return;
+  
+  const template = currentTemplates.find(t => t.id == templateId);
+  if (template) {
+    $('#emailSubject').val(template.title);
+    $('#emailContent').val(template.content);
+    currentTemplate = template;
+  }
+}
+
+// 插入变量
+function insertVariable(variable) {
+  const textarea = document.getElementById('emailContent');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const before = text.substring(0, start);
+  const after = text.substring(end, text.length);
+  
+  textarea.value = before + variable + after;
+  textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+  textarea.focus();
+}
+
+// 格式化文本
+function formatText(command) {
+  document.execCommand(command, false, null);
+}
+
+// 插入列表
+function insertList(type) {
+  const listText = type === 'unordered' ? '• ' : '1. ';
+  insertText(listText);
+}
+
+// 插入链接
+function insertLink() {
+  const url = prompt('请输入链接地址:');
+  if (url) {
+    const text = prompt('请输入链接文本:') || url;
+    insertText(`<a href="${url}">${text}</a>`);
+  }
+}
+
+// 插入图片
+function insertImage() {
+  const url = prompt('请输入图片地址:');
+  if (url) {
+    insertText(`<img src="${url}" alt="图片" style="max-width: 100%;">`);
+  }
+}
+
+// 插入文本
+function insertText(text) {
+  const textarea = document.getElementById('emailContent');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const content = textarea.value;
+  
+  textarea.value = content.substring(0, start) + text + content.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+  textarea.focus();
+}
+
+// 选择收件人
+function selectRecipients() {
+  console.log('✅ 选择收件人');
+  const modal = new bootstrap.Modal(document.getElementById('recipientSelectModal'));
+  modal.show();
+  loadContactsForSelection();
+}
+
+// 加载联系人用于选择
+async function loadContactsForSelection() {
+  try {
+    console.log('🔄 加载联系人列表...');
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/contacts/?pageSize=100', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 联系人数据:', data);
+    
+    if (!data.success) {
+      showError('加载联系人失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    const contacts = data.contacts || [];
+    window.allContacts = contacts;  // 保存到全局变量
+    
+    let html = '';
+    contacts.forEach(contact => {
+      const isSelected = selectedRecipients.some(r => r.id === contact.id);
+      html += `
+        <div class="contact-item d-flex align-items-center p-2 border-bottom">
+          <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
+                 value="${contact.id}" 
+                 data-contact-name="${contact.name}"
+                 data-contact-email="${contact.email}"
+                 data-contact-company="${contact.company || ''}"
+                 ${isSelected ? 'checked' : ''} 
+                 onchange="toggleRecipient(${contact.id}, this.checked)">
+          <div class="flex-grow-1">
+            <div class="fw-bold">${contact.name}</div>
+            <small class="text-muted">${contact.email} • ${contact.company || '未知公司'}</small>
+          </div>
+          <div class="tags">
+            <span class="badge bg-secondary">潜在客户</span>
+          </div>
+        </div>
+      `;
+    });
+    
+    const contactList = document.getElementById('contactList');
+    if (contactList) {
+      contactList.innerHTML = html;
+    }
+    
+    updateSelectedCount();
+    
+    console.log(`✅ 加载了 ${contacts.length} 个联系人`);
+  } catch (error) {
+    console.error('❌ 加载联系人失败:', error);
+    showError('加载联系人失败: ' + error.message);
+  }
+}
+
+// 切换收件人选择
+function toggleRecipient(contactId, isSelected) {
+  console.log('✅ 切换收件人:', contactId, isSelected);
+  
+  if (isSelected) {
+    // 添加到选中列表
+    const contact = window.allContacts.find(c => c.id === contactId);
+    if (contact && !selectedRecipients.some(r => r.id === contactId)) {
+      selectedRecipients.push(contact);
+      console.log('➕ 添加收件人:', contact.name);
+    }
+  } else {
+    // 从选中列表移除
+    const beforeLength = selectedRecipients.length;
+    selectedRecipients = selectedRecipients.filter(r => r.id !== contactId);
+    console.log('➖ 移除收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+  }
+  
+  updateSelectedCount();
+}
+
+// 更新选中数量
+function updateSelectedCount() {
+  const count = selectedRecipients.length;
+  const countElement = document.getElementById('selectedContactsCount');
+  if (countElement) {
+    countElement.textContent = `已选择 ${count} 人`;
+  }
+  console.log('📊 当前选中数量:', count);
+}
+
+// 全选联系人
+function selectAllContacts() {
+  const checkboxes = document.querySelectorAll('.recipient-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = true;
+    toggleRecipient(parseInt(cb.value), true);
+  });
+}
+
+// 清空选择
+function clearSelection() {
+  const checkboxes = document.querySelectorAll('.recipient-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = false;
+  });
+  selectedRecipients = [];
+  updateSelectedCount();
+  updateRecipientDisplay();
+}
+
+// 确认收件人
+function confirmRecipients() {
+  console.log('✅ 确认收件人，共选择:', selectedRecipients.length);
+  
+  // 更新收件人显示
+  updateRecipientDisplay();
+  
+  const modal = bootstrap.Modal.getInstance(document.getElementById('recipientSelectModal'));
+  if (modal) {
+    modal.hide();
+  }
+  
+  console.log('📋 选中的联系人列表:', selectedRecipients);
+}
+
+// 保存草稿
+async function saveDraft() {
+  const formData = {
+    title: $('#emailSubject').val(),
+    content: $('#emailContent').val(),
+    status: 'draft'
+  };
+  
+  try {
+    await axios.post('/api/emails/draft', formData);
+    showToast('草稿已保存', 'success');
+  } catch (error) {
+    showToast('保存草稿失败', 'danger');
+  }
+}
+
+// 当前预览索引
+let currentPreviewIndex = 0;
+let emailPreviews = [];
+
+// 预览邮件
+async function previewEmail() {
+  console.log('✅ 点击发送预览');
+  
+  if (selectedRecipients.length === 0) {
+    showError('请先选择收件人');
+    return;
+  }
+  
+  const subject = document.getElementById('emailSubject').value;
+  const content = document.getElementById('emailContent').value;
+  
+  if (!subject || !content) {
+    showError('请填写邮件主题和内容');
+    return;
+  }
+  
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔄 调用邮件预览接口...');
+    console.log('选中的收件人:', selectedRecipients);
+    console.log('当前模板ID:', currentTemplate);
+    
+    // 构建请求体
+    const requestBody = {
+      contact_ids: selectedRecipients.map(r => r.id),
+      template_title: subject,
+      template_content: content
+    };
+    
+    // 如果选择了模板，则添加 template_id
+    if (currentTemplate) {
+      requestBody.template_id = currentTemplate;
+    }
+    
+    console.log('📤 请求体:', requestBody);
+    
+    // 调用批量预览接口
+    const response = await fetch('/api/email-templates/batch-preview', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const data = await response.json();
+    console.log('📥 预览数据:', data);
+    
+    if (!data.success) {
+      showError('预览失败: ' + (data.message || '未知错误'));
+      hideLoading();
+      return;
+    }
+    
+    emailPreviews = data.previews || [];
+    currentPreviewIndex = 0;
+    
+    console.log(`✅ 生成了 ${emailPreviews.length} 个预览`);
+    
+    // 显示预览模态框
+    showPreviewModal();
+    
+  } catch (error) {
+    console.error('❌ 预览失败:', error);
+    showError('预览失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 显示预览模态框
+function showPreviewModal() {
+  if (emailPreviews.length === 0) {
+    showWarning('没有可预览的内容');
+    return;
+  }
+  
+  // 创建预览模态框（如果不存在）
+  let previewModal = document.getElementById('emailPreviewModal');
+  if (!previewModal) {
+    const modalHTML = `
+      <div class="modal fade" id="emailPreviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg" style="max-width: 700px;">
+          <div class="modal-content" style="position: relative;">
+            <div class="modal-header">
+              <h5 class="modal-title">邮件预览</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="min-height: 500px; max-height: 70vh; overflow-y: auto; padding: 2rem;">
+              <div id="previewContent">
+                <!-- 预览内容 -->
+              </div>
+            </div>
+            
+            <!-- 左右切换按钮 - 移到 modal-content 外层 -->
+            <button class="btn btn-primary rounded-circle preview-nav-btn" 
+                    onclick="previousPreview()" 
+                    id="prevBtn" 
+                    style="display: none; position: absolute; left: -60px; top: 50%; transform: translateY(-50%); z-index: 1100; width: 45px; height: 45px; opacity: 0.9;">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <button class="btn btn-primary rounded-circle preview-nav-btn" 
+                    onclick="nextPreview()" 
+                    id="nextBtn" 
+                    style="display: none; position: absolute; right: -60px; top: 50%; transform: translateY(-50%); z-index: 1100; width: 45px; height: 45px; opacity: 0.9;">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+            
+            <div class="modal-footer">
+              <div class="d-flex justify-content-between align-items-center w-100">
+                <span id="previewCounter" class="text-muted">1 / 1</span>
+                <div>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                  <button type="button" class="btn btn-primary" onclick="confirmAndSend()">
+                    <i class="bi bi-send"></i> 确认发送
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+  
+  // 渲染第一个预览
+  renderPreview();
+  
+  // 显示模态框
+  const modal = new bootstrap.Modal(document.getElementById('emailPreviewModal'));
+  modal.show();
+}
+
+// 渲染预览内容
+function renderPreview() {
+  if (emailPreviews.length === 0) return;
+  
+  const preview = emailPreviews[currentPreviewIndex];
+  const total = emailPreviews.length;
+  
+  const previewHTML = `
+    <div class="email-preview-card">
+      <div class="preview-header mb-4 p-3 bg-light rounded">
+        <div class="mb-2">
+          <strong class="text-primary">收件人：</strong> 
+          <span>${preview.recipient_name || '未知'}</span>
+        </div>
+        <div>
+          <strong class="text-primary">邮箱：</strong> 
+          <span>${preview.recipient_email || '未知'}</span>
+        </div>
+      </div>
+      
+      <div class="preview-body">
+        <div class="mb-4">
+          <label class="text-muted mb-2"><i class="bi bi-envelope"></i> 邮件主题</label>
+          <div class="p-3 bg-light rounded">
+            <strong style="font-size: 1.1rem;">${preview.template_title || '(无主题)'}</strong>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="text-muted mb-2"><i class="bi bi-file-text"></i> 邮件内容</label>
+          <div class="p-3 bg-white border rounded" style="min-height: 250px; white-space: pre-wrap; line-height: 1.6;">
+${preview.rendered_content || '(无内容)'}
+          </div>
+        </div>
+        
+        ${preview.variables_used && preview.variables_used.length > 0 ? `
+          <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+            <small class="text-muted">
+              <i class="bi bi-info-circle text-info"></i> 使用的变量: 
+              ${preview.variables_used.map(v => `<code class="bg-white px-2 py-1 rounded">{{${v}}}</code>`).join(' ')}
+            </small>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('previewContent').innerHTML = previewHTML;
+  
+  // 更新计数器
+  document.getElementById('previewCounter').textContent = `${currentPreviewIndex + 1} / ${total}`;
+  
+  // 控制左右按钮显示
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (total > 1) {
+    if (currentPreviewIndex === 0) {
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'block';
+    } else if (currentPreviewIndex === total - 1) {
+      prevBtn.style.display = 'block';
+      nextBtn.style.display = 'none';
+    } else {
+      prevBtn.style.display = 'block';
+      nextBtn.style.display = 'block';
+    }
+  } else {
+    prevBtn.style.display = 'none';
+    nextBtn.style.display = 'none';
+  }
+  
+  console.log(`📧 显示预览 ${currentPreviewIndex + 1}/${total}`);
+}
+
+// 上一个预览
+function previousPreview() {
+  if (currentPreviewIndex > 0) {
+    currentPreviewIndex--;
+    renderPreview();
+  }
+}
+
+// 下一个预览
+function nextPreview() {
+  if (currentPreviewIndex < emailPreviews.length - 1) {
+    currentPreviewIndex++;
+    renderPreview();
+  }
+}
+
+// 确认并发送
+function confirmAndSend() {
+  showInfo('📧 发送功能开发中...\n\n将会调用批量发送接口发送这 ' + emailPreviews.length + ' 封邮件');
+}
+
+// 发送邮件
+async function sendEmail(type) {
+  if (selectedRecipients.length === 0) {
+    showToast('请先选择收件人', 'warning');
+    return;
+  }
+  
+  const formData = {
+    title: $('#emailSubject').val(),
+    content: $('#emailContent').val(),
+    recipient_ids: selectedRecipients.map(r => r.id),
+    send_type: type
+  };
+  
+  try {
+    showLoading();
+    await axios.post('/api/emails/send-batch', formData);
+    showToast('邮件发送成功', 'success');
+    $('#addTemplateModal').modal('hide');
+  } catch (error) {
+    showToast('发送失败', 'danger');
+  } finally {
+    hideLoading();
+  }
+}
+
+// 保存模板
+async function saveTemplate() {
+  const formData = {
+    title: $('#emailSubject').val(),
+    content: $('#emailContent').val()
+  };
+  
+  if (!formData.title || !formData.content) {
+    showToast('请填写完整信息', 'warning');
+    return;
+  }
+  
+  try {
+    if (currentTemplate) {
+      // 更新现有模板
+      await axios.put(`/api/email-templates/${currentTemplate.id}`, formData);
+      showToast('模板更新成功', 'success');
+    } else {
+      // 创建新模板
+      await axios.post('/api/email-templates/', formData);
+      showToast('模板创建成功', 'success');
+    }
+    
+    $('#addTemplateModal').modal('hide');
+    await loadTemplates();
+  } catch (error) {
+    showToast('保存失败', 'danger');
+  }
+}
+
+// 编辑模板
+function editTemplate(id) {
+  const template = currentTemplates.find(t => t.id === id);
+  if (template) {
+    currentTemplate = template;
+    $('#templateSelect').val(id);
+    $('#emailSubject').val(template.title);
+    $('#emailContent').val(template.content);
+    $('#addTemplateModal').modal('show');
+  }
+}
+
+// 删除模板
+async function deleteTemplate(id) {
+  if (!confirm('确定要删除这个模板吗？')) return;
+  
+  try {
+    await axios.delete(`/api/email-templates/${id}`);
+    showToast('模板已删除', 'success');
+    await loadTemplates();
+  } catch (error) {
+    showToast('删除失败', 'danger');
+  }
+}
+
+// 显示模板预览
+function showTemplatePreview() {
+  showToast('模板预览功能开发中...', 'info');
+}
+
+// 工具函数
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function showLoading() {
+  console.log('🔄 显示加载中...');
+  const loadingHTML = `
+    <div class="loading-overlay" id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">加载中...</span>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', loadingHTML);
+}
+
+function hideLoading() {
+  console.log('✅ 隐藏加载中');
+  const loading = document.getElementById('loadingOverlay');
+  if (loading) {
+    loading.remove();
+  }
+}
+
+function showToast(message, type) {
+  console.log(`${type}: ${message}`);
+  showToast(message, 'info');
+}
+</script>

@@ -1,0 +1,169 @@
+<div class="row">
+  <div class="col-12 mb-3">
+    <h2><i class="bi bi-gear"></i> 邮箱设置</h2>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>我的邮箱账户</span>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addEmailModal">
+      <i class="bi bi-plus-lg"></i> 绑定新邮箱
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>邮箱地址</th>
+            <th>状态</th>
+            <th>默认邮箱</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="emailAccountsBody">
+          <tr>
+            <td colspan="5" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status"></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 绑定邮箱模态框 -->
+<div class="modal fade" id="addEmailModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">绑定新邮箱</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addEmailForm">
+          <div class="mb-3">
+            <label class="form-label">邮箱地址 *</label>
+            <input type="email" class="form-control" name="email_address" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">邮箱密码 *</label>
+            <input type="password" class="form-control" name="email_password" required>
+            <small class="text-muted">密码会被加密存储</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="bindEmail()">绑定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(async function() {
+  await loadEmailAccounts();
+});
+
+async function loadEmailAccounts() {
+  try {
+    const response = await axios.get('/user-email-bindings/list?pageSize=100');
+    const bindings = response.data.email_bindings;
+    
+    if (bindings.length === 0) {
+      $('#emailAccountsBody').html(`
+        <tr>
+          <td colspan="5" class="text-center p-5">
+            <div class="empty-state">
+              <i class="bi bi-envelope-at"></i>
+              <h5>暂无绑定邮箱</h5>
+              <p>绑定您的第一个邮箱账户</p>
+            </div>
+          </td>
+        </tr>
+      `);
+      return;
+    }
+    
+    let html = '';
+    bindings.forEach(binding => {
+      const statusBadge = binding.status === 'active' ? 
+        '<span class="badge bg-success">启用</span>' : 
+        '<span class="badge bg-secondary">禁用</span>';
+      
+      const defaultBadge = binding.is_default ? 
+        '<span class="badge bg-primary"><i class="bi bi-star-fill"></i> 默认</span>' : 
+        '<button class="btn btn-sm btn-outline-primary" onclick="setDefault(' + binding.id + ')">设为默认</button>';
+      
+      html += `
+        <tr>
+          <td>${binding.email_address}</td>
+          <td>${statusBadge}</td>
+          <td>${defaultBadge}</td>
+          <td>${formatDate(binding.created_at)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteBinding(${binding.id})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    $('#emailAccountsBody').html(html);
+  } catch (error) {
+    console.error('加载邮箱列表失败:', error);
+  }
+}
+
+async function bindEmail() {
+  const formData = {
+    email_address: $('input[name="email_address"]').val(),
+    email_password: $('input[name="email_password"]').val()
+  };
+  
+  if (!formData.email_address || !formData.email_password) {
+    showToast('请填写完整信息', 'warning');
+    return;
+  }
+  
+  try {
+    showLoading();
+    await axios.post('/user-email-bindings/bind', formData);
+    showToast('邮箱绑定成功', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('addEmailModal')).hide();
+    $('#addEmailForm')[0].reset();
+    await loadEmailAccounts();
+  } catch (error) {
+    showToast(error.response?.data?.message || '绑定失败', 'danger');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function setDefault(id) {
+  try {
+    await axios.patch(`/user-email-bindings/${id}/set-default`);
+    showToast('默认邮箱已设置', 'success');
+    await loadEmailAccounts();
+  } catch (error) {
+    showToast('设置失败', 'danger');
+  }
+}
+
+async function deleteBinding(id) {
+  if (!confirm('确定要删除这个邮箱绑定吗？')) return;
+  
+  try {
+    await axios.delete(`/user-email-bindings/${id}`);
+    showToast('邮箱绑定已删除', 'success');
+    await loadEmailAccounts();
+  } catch (error) {
+    showToast('删除失败', 'danger');
+  }
+}
+</script>

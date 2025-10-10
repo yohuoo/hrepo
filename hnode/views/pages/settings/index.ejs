@@ -1,0 +1,124 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">系统设置</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">系统设置</h1>
+  </div>
+</div>
+
+<!-- 设置选项 -->
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-envelope fs-1 text-primary"></i>
+        </div>
+        <h5 class="card-title">邮箱配置</h5>
+        <p class="card-text">配置发送邮件的邮箱账号，支持多个邮箱和SMTP设置</p>
+        <a href="/settings/email" class="btn btn-primary">
+          <i class="bi bi-gear"></i> 配置邮箱
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6 mb-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-file-earmark-text fs-1 text-success"></i>
+        </div>
+        <h5 class="card-title">邮件模板</h5>
+        <p class="card-text">管理和创建邮件模板，支持个性化变量和批量发送</p>
+        <a href="/emails/templates" class="btn btn-success">
+          <i class="bi bi-file-earmark-text"></i> 管理模板
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6 mb-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-person-circle fs-1 text-info"></i>
+        </div>
+        <h5 class="card-title">用户管理</h5>
+        <p class="card-text">管理用户账号、权限和系统访问控制</p>
+        <button class="btn btn-info" onclick="showToast('功能开发中...', 'info')">
+          <i class="bi bi-person-circle"></i> 用户管理
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6 mb-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="mb-3">
+          <i class="bi bi-gear fs-1 text-warning"></i>
+        </div>
+        <h5 class="card-title">系统配置</h5>
+        <p class="card-text">配置系统参数、API密钥和第三方服务集成</p>
+        <button class="btn btn-warning" onclick="showToast('功能开发中...', 'info')">
+          <i class="bi bi-gear"></i> 系统配置
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 系统信息 -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">系统信息</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <div class="text-center">
+              <h6 class="text-muted">版本信息</h6>
+              <p class="mb-0">v1.0.0</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center">
+              <h6 class="text-muted">运行时间</h6>
+              <p class="mb-0">7天 12小时</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center">
+              <h6 class="text-muted">数据库状态</h6>
+              <p class="mb-0 text-success">
+                <i class="bi bi-check-circle"></i> 正常
+              </p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-center">
+              <h6 class="text-muted">Redis状态</h6>
+              <p class="mb-0 text-success">
+                <i class="bi bi-check-circle"></i> 正常
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showToast(message, type) {
+  console.log(`${type}: ${message}`);
+}
+</script>

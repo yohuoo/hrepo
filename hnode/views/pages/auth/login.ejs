@@ -1,0 +1,103 @@
+<div class="auth-card">
+  <div class="logo">
+    <i class="bi bi-diagram-3 fs-1 text-primary"></i>
+    <h2>CRM系统</h2>
+    <p class="text-muted">客户关系管理平台</p>
+  </div>
+  
+  <form id="loginForm">
+    <div class="mb-3">
+      <label for="username" class="form-label">用户名或邮箱</label>
+      <input type="text" class="form-control" id="username" name="username" required>
+    </div>
+    
+    <div class="mb-3">
+      <label for="password" class="form-label">密码</label>
+      <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="rememberMe">
+      <label class="form-check-label" for="rememberMe">
+        记住我
+      </label>
+    </div>
+    
+    <button type="submit" class="btn btn-primary w-100 mb-3">
+      <i class="bi bi-box-arrow-in-right"></i> 登录
+    </button>
+    
+    <div class="text-center">
+      <span class="text-muted">还没有账号？</span>
+      <a href="/register">立即注册</a>
+    </div>
+  </form>
+</div>
+
+<script>
+// 使用原生JavaScript，不依赖jQuery
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('✅ 登录页面JavaScript已加载');
+  
+  const loginForm = document.getElementById('loginForm');
+  
+  if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      console.log('✅ 表单提交事件触发');
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      console.log('📝 用户名:', username);
+      console.log('📝 密码长度:', password.length);
+      
+      if (!username || !password) {
+        showWarning('请填写用户名和密码');
+        return;
+      }
+      
+      try {
+        console.log('🔄 开始调用登录API...');
+        
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: username,
+            password: password
+          })
+        });
+        
+        const data = await response.json();
+        console.log('📥 服务器响应:', data);
+        
+        if (data.success) {
+          console.log('✅ 登录成功！');
+          localStorage.setItem('authToken', data.token);
+          document.cookie = `authToken=${data.token}; path=/; max-age=${7*24*60*60}`;
+          
+          showSuccess('登录成功！即将跳转到控制台...');
+          
+          setTimeout(() => {
+            console.log('🔄 跳转到 /dashboard');
+            window.location.href = '/dashboard';
+          }, 500);
+        } else {
+          console.error('❌ 登录失败:', data.message);
+          showError('登录失败: ' + (data.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('❌ 请求错误:', error);
+        showError('登录失败: ' + error.message);
+      }
+    });
+    
+    console.log('✅ 表单事件监听器已绑定');
+  } else {
+    console.error('❌ 找不到登录表单');
+  }
+});
+</script>

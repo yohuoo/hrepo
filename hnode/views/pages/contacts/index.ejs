@@ -1,0 +1,1051 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">联系人</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">联系人管理</h1>
+    <p class="page-subtitle">管理和组织您的业务联系人</p>
+  </div>
+</div>
+
+<!-- 搜索区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-center">
+      <div class="col-lg-6 col-md-12">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" id="searchKeyword" placeholder="搜索姓名、邮箱或公司...">
+          <button class="btn btn-primary" onclick="searchContacts()">
+            <i class="bi bi-search me-1"></i>查询
+          </button>
+        </div>
+      </div>
+      <div class="col-lg-6 col-md-12">
+        <div class="d-flex gap-2 justify-content-lg-end">
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#hunterSearchModal">
+            <i class="bi bi-globe me-1"></i>Hunter.io搜索
+          </button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addContactModal">
+            <i class="bi bi-plus-lg me-1"></i>添加联系人
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 联系人列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th width="50">
+              <input type="checkbox" id="selectAllContacts" onchange="toggleAllContacts()">
+            </th>
+            <th>联系人姓名</th>
+            <th>电子邮箱</th>
+            <th>公司</th>
+            <th>职位</th>
+            <th>创建日期</th>
+            <th>标签</th>
+            <th width="100">操作</th>
+          </tr>
+        </thead>
+        <tbody id="contactTableBody">
+          <tr>
+            <td colspan="8" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <span>每页</span>
+          <select class="form-select form-select-sm" style="width: auto;" id="pageSizeSelect" onchange="changePageSize()">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          <span>条</span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center">
+          <span id="contactCount">显示1-4条,共4条</span>
+          <nav>
+            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批量操作工具栏 -->
+<div class="card mt-3" id="batchActionsCard" style="display: none;">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <span id="selectedCount">已选择 0 个联系人</span>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary btn-sm" onclick="exportSelectedContacts()">
+          <i class="bi bi-download"></i> 导出选中
+        </button>
+        <button class="btn btn-outline-danger btn-sm" onclick="deleteSelectedContacts()">
+          <i class="bi bi-trash"></i> 删除选中
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">
+          <i class="bi bi-x"></i> 取消选择
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hunter.io搜索模态框 -->
+<div class="modal fade" id="hunterSearchModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Hunter.io 域名搜索</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">输入公司域名或网址</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="hunterDomain" placeholder="例如: google.com 或 https://www.google.com">
+            <button class="btn btn-primary" onclick="searchHunter()">
+              <i class="bi bi-search"></i> 搜索
+            </button>
+          </div>
+        </div>
+        <div id="hunterResults">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 联系人详情模态框 -->
+<div class="modal fade" id="contactDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">联系人详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="contactDetailBody">
+        <!-- 联系人详情内容将通过JavaScript动态加载 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-primary" onclick="editContactFromDetail()">
+          <i class="bi bi-pencil"></i> 编辑
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 添加联系人模态框 -->
+<div class="modal fade" id="addContactModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">添加联系人</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addContactForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">姓名 *</label>
+              <input type="text" class="form-control" id="addContactName" required placeholder="请输入联系人姓名">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">邮箱 *</label>
+              <input type="email" class="form-control" id="addContactEmail" required placeholder="example@company.com">
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">名字</label>
+              <input type="text" class="form-control" id="addContactFirstName" placeholder="First Name">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">姓氏</label>
+              <input type="text" class="form-control" id="addContactLastName" placeholder="Last Name">
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">公司</label>
+              <input type="text" class="form-control" id="addContactCompany" placeholder="公司名称">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">职位</label>
+              <input type="text" class="form-control" id="addContactPosition" placeholder="职位名称">
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">域名</label>
+            <input type="text" class="form-control" id="addContactDomain" placeholder="company.com">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">标签（用逗号分隔）</label>
+            <input type="text" class="form-control" id="addContactTags" placeholder="例如: VIP, 重点客户">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveNewContact()">
+          <i class="bi bi-plus"></i> 添加
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑联系人模态框 -->
+<div class="modal fade" id="editContactModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">编辑联系人</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editContactForm">
+          <input type="hidden" id="editContactId">
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">姓名 *</label>
+              <input type="text" class="form-control" id="editContactName" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">邮箱 *</label>
+              <input type="email" class="form-control" id="editContactEmail" required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">名字</label>
+              <input type="text" class="form-control" id="editContactFirstName">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">姓氏</label>
+              <input type="text" class="form-control" id="editContactLastName">
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">公司</label>
+              <input type="text" class="form-control" id="editContactCompany">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">职位</label>
+              <input type="text" class="form-control" id="editContactPosition">
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">域名</label>
+            <input type="text" class="form-control" id="editContactDomain">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">标签（用逗号分隔）</label>
+            <input type="text" class="form-control" id="editContactTags" placeholder="例如: VIP, 重点客户">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveContactEdit()">
+          <i class="bi bi-check"></i> 保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+let selectedContacts = [];
+let pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('✅ 联系人页面已加载');
+  await loadContacts();
+  
+  const searchInput = document.getElementById('searchKeyword');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(searchContacts, 500));
+  }
+  
+  const pageSizeSelect = document.getElementById('pageSizeSelect');
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener('change', changePageSize);
+  }
+});
+
+async function loadContacts(page = 1) {
+  try {
+    console.log('🔄 加载联系人列表，页码:', page);
+    
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showWarning('请先登录');
+      window.location.href = '/login';
+      return;
+    }
+    
+    // 构建查询参数
+    let queryParams = `page=${page}&pageSize=${pageSize}`;
+    if (currentFilters.search) {
+      queryParams += `&search=${encodeURIComponent(currentFilters.search)}`;
+    }
+    
+    const url = `/api/contacts/?${queryParams}`;
+    console.log('📍 请求URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 联系人数据:', data);
+    
+    if (!data.success) {
+      showError('加载联系人失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    currentPage = page;
+    renderContactTable(data.contacts || []);
+    renderPagination(data.page, data.total_pages);
+    updateContactCount(data.total, data.contacts?.length || 0, page);
+    
+  } catch (error) {
+    console.error('❌ 加载联系人列表失败:', error);
+    showError('加载联系人列表失败: ' + error.message);
+  }
+}
+
+function renderContactTable(contacts) {
+  const tbody = document.getElementById('contactTableBody');
+  if (!tbody) {
+    console.error('❌ 找不到联系人表格');
+    return;
+  }
+  
+  console.log('🔄 渲染联系人表格，共', contacts.length, '条');
+  
+  if (contacts.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-person-lines-fill"></i>
+            <h5>暂无联系人</h5>
+            <p>开始添加您的第一个联系人</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  contacts.forEach(contact => {
+    const tags = contact.tags ? contact.tags.map(tag => `<span class="badge bg-info me-1">${tag}</span>`).join('') : '';
+    const isSelected = selectedContacts.includes(contact.id);
+    
+    html += `
+      <tr class="contact-row" data-contact-id="${contact.id}">
+        <td>
+          <input type="checkbox" class="contact-checkbox" value="${contact.id}" ${isSelected ? 'checked' : ''} onchange="toggleContactSelection(${contact.id})">
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <div class="avatar-circle me-2">
+              ${getInitials(contact.name)}
+            </div>
+            <div>
+              <div class="fw-bold">${contact.name || '-'}</div>
+            </div>
+          </div>
+        </td>
+        <td>${contact.email}</td>
+        <td>${contact.company || '-'}</td>
+        <td>${contact.position || '-'}</td>
+        <td>${formatDate(contact.created_at)}</td>
+        <td>${tags || '-'}</td>
+        <td>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="viewContact(${contact.id}); return false;">
+                <i class="bi bi-eye"></i> 查看详情
+              </a></li>
+              <li><a class="dropdown-item" href="#" onclick="editContact(${contact.id}); return false;">
+                <i class="bi bi-pencil"></i> 编辑
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="deleteContact(${contact.id}); return false;">
+                <i class="bi bi-trash"></i> 删除
+              </a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+  console.log('✅ 联系人表格渲染完成');
+}
+
+function renderPagination(current, total) {
+  const pagination = document.getElementById('pagination');
+  if (!pagination) return;
+  
+  if (total <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadContacts(${current - 1}); return false;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+  `;
+  
+  // 页码
+  const startPage = Math.max(1, current - 2);
+  const endPage = Math.min(total, current + 2);
+  
+  if (startPage > 1) {
+    html += `<li class="page-item"><a class="page-link" href="#" onclick="loadContacts(1); return false;">1</a></li>`;
+    if (startPage > 2) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="loadContacts(${i}); return false;">${i}</a>
+      </li>
+    `;
+  }
+  
+  if (endPage < total) {
+    if (endPage < total - 1) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    html += `<li class="page-item"><a class="page-link" href="#" onclick="loadContacts(${total}); return false;">${total}</a></li>`;
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadContacts(${current + 1}); return false;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  `;
+  
+  pagination.innerHTML = html;
+}
+
+function updateContactCount(total, current, page) {
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  const countElement = document.getElementById('contactCount');
+  if (countElement) {
+    countElement.textContent = `显示${start}-${end}条,共${total}条`;
+  }
+}
+
+function searchContacts() {
+  currentFilters = {};
+  
+  const searchInput = document.getElementById('searchKeyword');
+  const keyword = searchInput ? searchInput.value : '';
+  if (keyword) currentFilters.search = keyword;
+  
+  loadContacts(1);
+}
+
+function changePageSize() {
+  const pageSizeSelect = document.getElementById('pageSizeSelect');
+  pageSize = pageSizeSelect ? parseInt(pageSizeSelect.value) : 20;
+  loadContacts(1);
+}
+
+// 联系人选择功能
+function toggleContactSelection(contactId) {
+  const index = selectedContacts.indexOf(contactId);
+  if (index > -1) {
+    selectedContacts.splice(index, 1);
+  } else {
+    selectedContacts.push(contactId);
+  }
+  updateBatchActions();
+}
+
+function toggleAllContacts() {
+  const isChecked = $('#selectAllContacts').is(':checked');
+  $('.contact-checkbox').prop('checked', isChecked);
+  
+  if (isChecked) {
+    selectedContacts = $('.contact-checkbox').map(function() {
+      return parseInt($(this).val());
+    }).get();
+  } else {
+    selectedContacts = [];
+  }
+  
+  updateBatchActions();
+}
+
+function updateBatchActions() {
+  const count = selectedContacts.length;
+  $('#selectedCount').text(`已选择 ${count} 个联系人`);
+  
+  if (count > 0) {
+    $('#batchActionsCard').show();
+  } else {
+    $('#batchActionsCard').hide();
+  }
+}
+
+function clearSelection() {
+  selectedContacts = [];
+  $('.contact-checkbox').prop('checked', false);
+  $('#selectAllContacts').prop('checked', false);
+  updateBatchActions();
+}
+
+// 批量操作
+function exportSelectedContacts() {
+  if (selectedContacts.length === 0) {
+    showToast('请先选择要导出的联系人', 'warning');
+    return;
+  }
+  
+  // 实现导出功能
+  showToast('导出功能开发中...', 'info');
+}
+
+function deleteSelectedContacts() {
+  if (selectedContacts.length === 0) {
+    showToast('请先选择要删除的联系人', 'warning');
+    return;
+  }
+  
+  if (!confirm(`确定要删除选中的 ${selectedContacts.length} 个联系人吗？`)) {
+    return;
+  }
+  
+  // 实现批量删除
+  showToast('批量删除功能开发中...', 'info');
+}
+
+// 筛选功能已移除
+
+// Hunter.io搜索
+async function searchHunter() {
+  const domain = $('#hunterDomain').val();
+  if (!domain) {
+    showToast('请输入域名', 'warning');
+    return;
+  }
+  
+  try {
+    showLoading();
+    const response = await axios.get('/api/hunter/domain-search', {
+      params: { domain: domain, limit: 20 }
+    });
+    
+    const contacts = response.data.contacts;
+    
+    if (contacts.length === 0) {
+      $('#hunterResults').html('<div class="alert alert-info">未找到联系人</div>');
+      return;
+    }
+    
+    let html = '<div class="list-group">';
+    contacts.forEach((contact, index) => {
+      html += `
+        <div class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${contact.name || contact.first_name + ' ' + contact.last_name}</h6>
+              <small class="text-muted">${contact.email}</small><br>
+              <small class="text-muted">${contact.position || '-'} at ${contact.company || '-'}</small>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="importContact(${index})">
+              <i class="bi bi-plus"></i> 导入
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    
+    $('#hunterResults').html(html);
+    window.hunterContacts = contacts;
+    
+  } catch (error) {
+    showToast(error.response?.data?.message || '搜索失败', 'danger');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function importContact(index) {
+  const contact = window.hunterContacts[index];
+  
+  try {
+    await axios.post('/api/contacts/', {
+      name: contact.name,
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email,
+      company: contact.company,
+      domain: contact.domain,
+      position: contact.position
+    });
+    
+    showToast('联系人导入成功', 'success');
+    $('#hunterSearchModal').modal('hide');
+    await loadContacts(1);
+  } catch (error) {
+    showToast(error.response?.data?.message || '导入失败', 'danger');
+  }
+}
+
+// 联系人操作
+async function viewContact(id) {
+  console.log('✅ 查看联系人详情:', id);
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/contacts/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const contact = data.contact;
+      
+      // 渲染联系人详情
+      const detailHTML = `
+        <div class="contact-detail">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">姓名</label>
+                <p class="fw-bold">${contact.name}</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">邮箱</label>
+                <p class="fw-bold">${contact.email}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">名字</label>
+                <p>${contact.first_name || '-'}</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">姓氏</label>
+                <p>${contact.last_name || '-'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">公司</label>
+                <p>${contact.company || '-'}</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">职位</label>
+                <p>${contact.position || '-'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">域名</label>
+                <p>${contact.domain || '-'}</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">标签</label>
+                <p>${contact.tags && contact.tags.length > 0 ? contact.tags.map(tag => `<span class="badge bg-info me-1">${tag}</span>`).join('') : '-'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">创建时间</label>
+                <p>${new Date(contact.created_at).toLocaleString('zh-CN')}</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-item">
+                <label class="text-muted">更新时间</label>
+                <p>${new Date(contact.updated_at).toLocaleString('zh-CN')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('contactDetailBody').innerHTML = detailHTML;
+      
+      // 保存当前联系人数据供编辑使用
+      window.currentContact = contact;
+      
+      // 显示模态框
+      const modal = new bootstrap.Modal(document.getElementById('contactDetailModal'));
+      modal.show();
+    } else {
+      showError('获取联系人详情失败: ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ 查看联系人详情失败:', error);
+    showError('查看联系人详情失败: ' + error.message);
+  }
+}
+
+function editContact(id) {
+  console.log('✅ 编辑联系人:', id);
+  
+  // 先获取联系人详情，然后打开编辑模态框
+  viewContactForEdit(id);
+}
+
+// 从详情页面进入编辑
+function editContactFromDetail() {
+  if (!window.currentContact) {
+    showError('无法获取联系人信息');
+    return;
+  }
+  
+  // 关闭详情模态框
+  const detailModal = bootstrap.Modal.getInstance(document.getElementById('contactDetailModal'));
+  if (detailModal) {
+    detailModal.hide();
+  }
+  
+  // 填充编辑表单
+  fillEditForm(window.currentContact);
+  
+  // 显示编辑模态框
+  const editModal = new bootstrap.Modal(document.getElementById('editContactModal'));
+  editModal.show();
+}
+
+// 获取联系人并打开编辑模态框
+async function viewContactForEdit(id) {
+  console.log('✅ 获取联系人信息用于编辑:', id);
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/contacts/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      fillEditForm(data.contact);
+      
+      // 显示编辑模态框
+      const modal = new bootstrap.Modal(document.getElementById('editContactModal'));
+      modal.show();
+    } else {
+      showError('获取联系人信息失败: ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ 获取联系人信息失败:', error);
+    showError('获取联系人信息失败: ' + error.message);
+  }
+}
+
+// 填充编辑表单
+function fillEditForm(contact) {
+  document.getElementById('editContactId').value = contact.id;
+  document.getElementById('editContactName').value = contact.name || '';
+  document.getElementById('editContactEmail').value = contact.email || '';
+  document.getElementById('editContactFirstName').value = contact.first_name || '';
+  document.getElementById('editContactLastName').value = contact.last_name || '';
+  document.getElementById('editContactCompany').value = contact.company || '';
+  document.getElementById('editContactPosition').value = contact.position || '';
+  document.getElementById('editContactDomain').value = contact.domain || '';
+  document.getElementById('editContactTags').value = contact.tags ? contact.tags.join(', ') : '';
+}
+
+// 保存新联系人
+async function saveNewContact() {
+  console.log('✅ 添加新联系人');
+  
+  const name = document.getElementById('addContactName').value;
+  const email = document.getElementById('addContactEmail').value;
+  
+  if (!name || !email) {
+    showWarning('请填写姓名和邮箱');
+    return;
+  }
+  
+  const contactData = {
+    name: name,
+    email: email,
+    first_name: document.getElementById('addContactFirstName').value,
+    last_name: document.getElementById('addContactLastName').value,
+    company: document.getElementById('addContactCompany').value,
+    position: document.getElementById('addContactPosition').value,
+    domain: document.getElementById('addContactDomain').value,
+    tags: document.getElementById('addContactTags').value.split(',').map(tag => tag.trim()).filter(tag => tag)
+  };
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔄 创建新联系人...', contactData);
+    
+    const response = await fetch('/api/contacts/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(contactData)
+    });
+    
+    const data = await response.json();
+    console.log('📥 创建响应:', data);
+    
+    if (data.success) {
+      showSuccess('联系人添加成功！');
+      
+      // 关闭模态框
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addContactModal'));
+      if (modal) {
+        modal.hide();
+      }
+      
+      // 清空表单
+      document.getElementById('addContactForm').reset();
+      
+      // 刷新联系人列表
+      await loadContacts(1);
+    } else {
+      showError('添加失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 添加联系人失败:', error);
+    showError('添加失败: ' + error.message);
+  }
+}
+
+// 保存编辑
+async function saveContactEdit() {
+  console.log('✅ 保存联系人编辑');
+  
+  const id = document.getElementById('editContactId').value;
+  const name = document.getElementById('editContactName').value;
+  const email = document.getElementById('editContactEmail').value;
+  
+  if (!name || !email) {
+    showWarning('请填写姓名和邮箱');
+    return;
+  }
+  
+  const contactData = {
+    name: name,
+    email: email,
+    first_name: document.getElementById('editContactFirstName').value,
+    last_name: document.getElementById('editContactLastName').value,
+    company: document.getElementById('editContactCompany').value,
+    position: document.getElementById('editContactPosition').value,
+    domain: document.getElementById('editContactDomain').value,
+    tags: document.getElementById('editContactTags').value.split(',').map(tag => tag.trim()).filter(tag => tag)
+  };
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔄 更新联系人信息...');
+    
+    const response = await fetch(`/api/contacts/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(contactData)
+    });
+    
+    const data = await response.json();
+    console.log('📥 更新响应:', data);
+    
+    if (data.success) {
+      showSuccess('联系人信息保存成功！');
+      
+      // 关闭编辑模态框
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editContactModal'));
+      if (modal) {
+        modal.hide();
+      }
+      
+      // 刷新联系人列表
+      await loadContacts(currentPage);
+    } else {
+      showError('保存失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 保存联系人失败:', error);
+    showError('保存失败: ' + error.message);
+  }
+}
+
+async function deleteContact(id) {
+  if (!confirm('确定要删除这个联系人吗？')) return;
+  
+  console.log('✅ 删除联系人:', id);
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/contacts/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('联系人已删除');
+      await loadContacts(currentPage);
+    } else {
+      showError('删除失败: ' + data.message);
+    }
+  } catch (error) {
+    console.error('删除联系人失败:', error);
+    showError('删除失败: ' + error.message);
+  }
+}
+
+// 工具函数
+function getInitials(name) {
+  if (!name) return '?';
+  const names = name.split(' ');
+  if (names.length >= 2) {
+    return (names[0][0] + names[1][0]).toUpperCase();
+  }
+  return name[0].toUpperCase();
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function showLoading() {
+  // 显示加载状态
+}
+
+function hideLoading() {
+  // 隐藏加载状态
+}
+
+function showToast(message, type) {
+  // 显示提示消息
+  console.log(`${type}: ${message}`);
+}
+</script>

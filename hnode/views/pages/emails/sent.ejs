@@ -1,0 +1,443 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/emails">邮件</a></li>
+        <li class="breadcrumb-item active">发件箱</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">邮箱发送列表</h1>
+  </div>
+</div>
+
+<!-- 搜索和筛选区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" id="searchKeyword" placeholder="搜索邮件主题、收件人...">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="showFilterModal()">
+            <i class="bi bi-funnel"></i> 筛选
+          </button>
+          <button class="btn btn-primary" onclick="composeNewEmail()">
+            <i class="bi bi-plus-lg"></i> 新建邮件
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 邮件列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th width="50">序号</th>
+            <th>邮件主题</th>
+            <th>收件人</th>
+            <th>发件人</th>
+            <th>发送时间</th>
+            <th>状态</th>
+            <th width="100">操作</th>
+          </tr>
+        </thead>
+        <tbody id="emailTableBody">
+          <tr>
+            <td colspan="7" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <span>每页显示</span>
+          <select class="form-select form-select-sm" style="width: auto;" id="pageSizeSelect" onchange="changePageSize()">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          <span>条</span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center">
+          <span id="emailCount">显示1-4条,共4条</span>
+          <nav>
+            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 邮件详情模态框 -->
+<div class="modal fade" id="emailDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">邮件详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="emailDetailBody">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+let currentEmailId = null;
+let pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('✅ 发件箱页面已加载');
+  await loadEmails();
+  
+  const searchInput = document.getElementById('searchKeyword');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(searchEmails, 500));
+  }
+  
+  const pageSizeSelect = document.getElementById('pageSizeSelect');
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener('change', changePageSize);
+  }
+});
+
+async function loadEmails(page = 1) {
+  try {
+    console.log('🔄 加载发件箱邮件，第', page, '页');
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 构建查询参数
+    const params = new URLSearchParams({
+      email_type: 'sent',
+      page: page,
+      pageSize: pageSize,
+      ...currentFilters
+    });
+    
+    const response = await fetch(`/api/email-history/?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 发件箱数据:', data);
+    
+    if (!data.success) {
+      showError('加载邮件失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    currentPage = page;
+    renderEmailTable(data.email_history || [], page);
+    renderPagination(data.page, data.total_pages);
+    updateEmailCount(data.total, (data.email_history || []).length, page);
+    
+  } catch (error) {
+    console.error('❌ 加载邮件失败:', error);
+    showError('加载邮件失败: ' + error.message);
+  }
+}
+
+function renderEmailTable(emails, page) {
+  const tableBody = document.getElementById('emailTableBody');
+  if (!tableBody) {
+    console.error('❌ 找不到 emailTableBody 元素');
+    return;
+  }
+  
+  if (emails.length === 0) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-send"></i>
+            <h5>发件箱为空</h5>
+            <p class="text-muted">您还没有发送过邮件</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  emails.forEach((email, index) => {
+    const statusBadge = getStatusBadge(email.status);
+    const customerInfo = email.customer ? `${email.customer.name} (${email.customer.company})` : '';
+    
+    html += `
+      <tr class="email-row clickable-row" data-email-id="${email.id}" onclick="showEmailDetail(${email.id})" style="cursor: pointer;">
+        <td>${(page - 1) * pageSize + index + 1}</td>
+        <td>
+          <div class="fw-bold">${email.title || '(无主题)'}</div>
+          ${customerInfo ? `<small class="text-muted">客户: ${customerInfo}</small>` : ''}
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <span class="badge bg-primary me-2">收件人</span>
+            <span>${email.receive_address}</span>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <span class="badge bg-secondary me-2">发件人</span>
+            <span>${email.send_address}</span>
+          </div>
+        </td>
+        <td>${formatDate(email.send_time)}</td>
+        <td>${statusBadge}</td>
+        <td onclick="event.stopPropagation();">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="showEmailDetail(${email.id})">
+                <i class="bi bi-eye"></i> 查看详情
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="deleteEmail(${email.id})">
+                <i class="bi bi-trash"></i> 删除
+              </a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tableBody.innerHTML = html;
+  console.log(`✅ 渲染了 ${emails.length} 封邮件`);
+}
+
+function renderPagination(current, total) {
+  if (total <= 1) {
+    $('#pagination').html('');
+    return;
+  }
+  
+  let html = '';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadEmails(${current - 1}); return false;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+  `;
+  
+  // 页码
+  const startPage = Math.max(1, current - 2);
+  const endPage = Math.min(total, current + 2);
+  
+  if (startPage > 1) {
+    html += `<li class="page-item"><a class="page-link" href="#" onclick="loadEmails(1); return false;">1</a></li>`;
+    if (startPage > 2) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="loadEmails(${i}); return false;">${i}</a>
+      </li>
+    `;
+  }
+  
+  if (endPage < total) {
+    if (endPage < total - 1) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    html += `<li class="page-item"><a class="page-link" href="#" onclick="loadEmails(${total}); return false;">${total}</a></li>`;
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadEmails(${current + 1}); return false;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  `;
+  
+  $('#pagination').html(html);
+}
+
+function updateEmailCount(total, current, page) {
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  $('#emailCount').text(`显示${start}-${end}条,共${total}条`);
+}
+
+function searchEmails() {
+  currentFilters = {};
+  
+  const keyword = $('#searchKeyword').val();
+  if (keyword) currentFilters.query = keyword;
+  
+  loadEmails(1);
+}
+
+function changePageSize() {
+  pageSize = parseInt($('#pageSizeSelect').val());
+  loadEmails(1);
+}
+
+// 筛选功能
+function showFilterModal() {
+  // 实现筛选模态框
+  showToast('筛选功能开发中...', 'info');
+}
+
+// 新建邮件
+function composeNewEmail() {
+  window.location.href = '/emails/compose';
+}
+
+// 邮件详情
+async function showEmailDetail(emailId) {
+  try {
+    currentEmailId = emailId;
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/email-history/${emailId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 邮件详情:', data);
+    
+    if (!data.success) {
+      showError('加载邮件详情失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    const email = data.email_history;
+    
+    const html = `
+      <div class="mb-3">
+        <strong>发件人:</strong> ${email.send_address || '未知'}
+        ${email.sender_email_binding ? `<br><small class="text-muted">邮箱: ${email.sender_email_binding.email_address}</small>` : ''}
+      </div>
+      <div class="mb-3">
+        <strong>收件人:</strong> ${email.receive_address || '未知'}
+      </div>
+      <div class="mb-3">
+        <strong>主题:</strong> ${email.title || '(无主题)'}
+      </div>
+      <div class="mb-3">
+        <strong>时间:</strong> ${new Date(email.send_time).toLocaleString('zh-CN')}
+      </div>
+      <div class="mb-3">
+        <strong>状态:</strong> ${getStatusBadge(email.status || 'sent')}
+      </div>
+      ${email.customer ? `
+        <div class="mb-3">
+          <strong>关联客户:</strong> 
+          <span class="text-dark">${email.customer.name} (${email.customer.company})</span>
+        </div>
+      ` : ''}
+      <hr>
+      <div class="mb-3">
+        <strong>内容:</strong>
+        <div class="mt-2 p-3 bg-light rounded" style="white-space: pre-line;">${email.content ? email.content.trim() : '(无内容)'}</div>
+      </div>
+    `;
+    
+    const emailDetailBody = document.getElementById('emailDetailBody');
+    if (emailDetailBody) {
+      emailDetailBody.innerHTML = html;
+    }
+    
+    new bootstrap.Modal(document.getElementById('emailDetailModal')).show();
+  } catch (error) {
+    console.error('❌ 加载邮件详情失败:', error);
+    showError('加载邮件详情失败: ' + error.message);
+  }
+}
+
+// 删除邮件
+async function deleteEmail(emailId) {
+  if (!confirm('确定要删除这封邮件吗？')) return;
+  
+  try {
+    await axios.delete(`/api/email-history/${emailId}`);
+    showToast('邮件已删除', 'success');
+    await loadEmails(currentPage);
+  } catch (error) {
+    showToast('删除失败', 'danger');
+  }
+}
+
+// 工具函数
+function getStatusBadge(status) {
+  const badges = {
+    'sent': '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 已发送</span>',
+    'failed': '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> 失败</span>',
+    'pending': '<span class="badge bg-warning"><i class="bi bi-clock"></i> 待发送</span>',
+    'draft': '<span class="badge bg-secondary"><i class="bi bi-file-text"></i> 草稿</span>'
+  };
+  return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function showToast(message, type) {
+  // 显示提示消息
+  console.log(`${type}: ${message}`);
+}
+</script>

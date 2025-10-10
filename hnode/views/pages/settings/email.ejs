@@ -1,0 +1,500 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/settings">设置</a></li>
+        <li class="breadcrumb-item active">邮箱配置</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">邮箱配置</h1>
+  </div>
+</div>
+
+<!-- 邮箱配置卡片 -->
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">已配置邮箱</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmailModal">
+          <i class="bi bi-plus-lg"></i> 添加邮箱
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>邮箱地址</th>
+                <th>状态</th>
+                <th>默认邮箱</th>
+                <th width="150">操作</th>
+              </tr>
+            </thead>
+            <tbody id="emailTableBody">
+              <tr>
+                <td colspan="4" class="text-center p-5">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4">
+    <!-- 配置说明 -->
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">配置说明</h6>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <h6><i class="bi bi-info-circle"></i> 如何配置邮箱？</h6>
+          <ol class="mb-0">
+            <li>点击"添加邮箱"按钮</li>
+            <li>填写邮箱地址和密码</li>
+            <li>系统会自动检测SMTP设置</li>
+            <li>测试连接成功后即可使用</li>
+          </ol>
+        </div>
+        
+        <div class="alert alert-warning">
+          <h6><i class="bi bi-exclamation-triangle"></i> 注意事项</h6>
+          <ul class="mb-0">
+            <li>建议使用专用邮箱账号</li>
+            <li>确保开启SMTP服务</li>
+            <li>可能需要应用专用密码</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 添加邮箱模态框 -->
+<div class="modal fade" id="addEmailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">添加邮箱</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addEmailForm">
+          <div class="mb-3">
+            <label class="form-label">邮箱地址 *</label>
+            <input type="email" class="form-control" name="email_address" placeholder="example@company.com" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">邮箱密码 *</label>
+            <input type="password" class="form-control" name="password" placeholder="邮箱密码或应用专用密码" required>
+          </div>
+          
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_default" id="isDefault">
+              <label class="form-check-label" for="isDefault">
+                设为默认邮箱
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="addEmail()">
+          <i class="bi bi-check"></i> 添加邮箱
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑邮箱模态框 -->
+<div class="modal fade" id="editEmailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">编辑邮箱</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editEmailForm">
+          <input type="hidden" name="id" id="editEmailId">
+          
+          <div class="mb-3">
+            <label class="form-label">邮箱地址 *</label>
+            <input type="email" class="form-control" name="email_address" id="editEmailAddress" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">邮箱密码</label>
+            <input type="password" class="form-control" name="password" placeholder="留空则不修改密码">
+          </div>
+          
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_default" id="editIsDefault">
+              <label class="form-check-label" for="editIsDefault">
+                设为默认邮箱
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="updateEmail()">
+          <i class="bi bi-check"></i> 保存修改
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let emailBindings = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('✅ 邮箱配置页面已加载');
+  await loadEmailBindings();
+});
+
+// 加载邮箱绑定列表
+async function loadEmailBindings() {
+  try {
+    console.log('🔄 加载邮箱绑定列表...');
+    
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showWarning('请先登录');
+      window.location.href = '/login';
+      return;
+    }
+    
+    const response = await fetch('/api/user-email-bindings/', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 邮箱绑定数据:', data);
+    
+    if (!data.success) {
+      showError('加载邮箱配置失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    emailBindings = data.bindings || [];
+    console.log('✅ 加载了', emailBindings.length, '个邮箱配置');
+    renderEmailTable();
+  } catch (error) {
+    console.error('❌ 加载邮箱配置失败:', error);
+    showError('加载邮箱配置失败: ' + error.message);
+  }
+}
+
+// 渲染邮箱表格
+function renderEmailTable() {
+  const tbody = document.getElementById('emailTableBody');
+  if (!tbody) {
+    console.error('❌ 找不到邮箱表格');
+    return;
+  }
+  
+  console.log('🔄 渲染邮箱表格，共', emailBindings.length, '条');
+  
+  if (emailBindings.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-envelope"></i>
+            <h5>暂无邮箱配置</h5>
+            <p>添加您的第一个邮箱配置</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  let html = '';
+  emailBindings.forEach(binding => {
+    const statusBadge = getStatusBadge(binding.status);
+    const defaultBadge = binding.is_default ? 
+      '<span class="badge bg-success"><i class="bi bi-star-fill"></i> 默认</span>' : 
+      '<span class="badge bg-secondary">普通</span>';
+
+    html += `
+      <tr class="clickable-row" onclick="editEmail(${binding.id})" style="cursor: pointer;">
+        <td>
+          <div class="d-flex align-items-center">
+            <i class="bi bi-envelope text-primary me-2"></i>
+            <span class="fw-bold">${binding.email_address}</span>
+          </div>
+        </td>
+        <td>${statusBadge}</td>
+        <td>${defaultBadge}</td>
+        <td onclick="event.stopPropagation();">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="editEmail(${binding.id}); return false;">
+                <i class="bi bi-pencil"></i> 编辑
+              </a></li>
+              ${!binding.is_default ? `
+                <li><a class="dropdown-item" href="#" onclick="setDefaultEmail(${binding.id}); return false;">
+                  <i class="bi bi-star"></i> 设为默认
+                </a></li>
+              ` : ''}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="deleteEmail(${binding.id}); return false;">
+                <i class="bi bi-trash"></i> 删除
+              </a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+  console.log('✅ 邮箱表格渲染完成');
+}
+
+// 获取状态徽章
+function getStatusBadge(status) {
+  const badges = {
+    'active': '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 正常</span>',
+    'inactive': '<span class="badge bg-secondary"><i class="bi bi-pause-circle"></i> 未激活</span>',
+    'error': '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> 错误</span>',
+    'testing': '<span class="badge bg-warning"><i class="bi bi-clock"></i> 测试中</span>'
+  };
+  return badges[status] || '<span class="badge bg-secondary">未知</span>';
+}
+
+// 添加邮箱
+async function addEmail() {
+  const formData = {
+    email_address: document.querySelector('input[name="email_address"]').value,
+    password: document.querySelector('input[name="password"]').value,
+    is_default: document.getElementById('isDefault').checked
+  };
+
+  if (!formData.email_address || !formData.password) {
+    showError('请填写邮箱地址和密码');
+    return;
+  }
+
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/user-email-bindings/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('邮箱添加成功！');
+      
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addEmailModal'));
+      if (modal) {
+        modal.hide();
+      }
+      
+      document.getElementById('addEmailForm').reset();
+      await loadEmailBindings();
+    } else {
+      showError('添加失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 添加邮箱失败:', error);
+    showError('添加失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 测试连接功能已删除（不再需要SMTP配置）
+
+// 编辑邮箱
+function editEmail(id) {
+  console.log('✅ 编辑邮箱:', id);
+  
+  const binding = emailBindings.find(b => b.id === id);
+  if (!binding) {
+    showError('找不到邮箱配置');
+    return;
+  }
+
+  document.getElementById('editEmailId').value = binding.id;
+  document.getElementById('editEmailAddress').value = binding.email_address;
+  document.getElementById('editIsDefault').checked = binding.is_default || false;
+
+  const modal = new bootstrap.Modal(document.getElementById('editEmailModal'));
+  modal.show();
+}
+
+// 测试编辑连接功能已删除
+
+// 更新邮箱
+async function updateEmail() {
+  console.log('✅ 更新邮箱');
+  
+  const id = document.getElementById('editEmailId').value;
+  const formData = {
+    email_address: document.getElementById('editEmailAddress').value,
+    is_default: document.getElementById('editIsDefault').checked
+  };
+
+  const password = document.querySelector('#editEmailModal input[name="password"]').value;
+  if (password) {
+    formData.password = password;
+  }
+
+  if (!formData.email_address) {
+    showError('请填写邮箱地址');
+    return;
+  }
+
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/user-email-bindings/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('邮箱更新成功！');
+      
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editEmailModal'));
+      if (modal) {
+        modal.hide();
+      }
+      
+      await loadEmailBindings();
+    } else {
+      showError('更新失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 更新邮箱失败:', error);
+    showError('更新失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 测试邮箱连接功能已删除
+
+// 设置默认邮箱
+async function setDefaultEmail(id) {
+  console.log('✅ 设置默认邮箱:', id);
+  
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/user-email-bindings/${id}/set-default`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('默认邮箱设置成功！');
+      await loadEmailBindings();
+    } else {
+      showError('设置失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 设置默认邮箱失败:', error);
+    showError('设置失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 删除邮箱
+async function deleteEmail(id) {
+  if (!confirm('确定要删除这个邮箱配置吗？')) return;
+
+  console.log('✅ 删除邮箱:', id);
+
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/user-email-bindings/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('邮箱删除成功！');
+      await loadEmailBindings();
+    } else {
+      showError('删除失败: ' + (data.message || '未知错误'));
+    }
+  } catch (error) {
+    console.error('❌ 删除邮箱失败:', error);
+    showError('删除失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 工具函数
+function showLoading() {
+  // 显示加载状态
+}
+
+function hideLoading() {
+  // 隐藏加载状态
+}
+
+function showToast(message, type) {
+  console.log(`${type}: ${message}`);
+}
+</script>

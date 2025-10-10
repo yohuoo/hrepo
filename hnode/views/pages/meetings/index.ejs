@@ -1,0 +1,619 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">会议记录</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">视频会议记录</h1>
+  </div>
+</div>
+
+<!-- 上传区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-center">
+      <div class="col-lg-8 col-md-7">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" id="searchKeyword" placeholder="搜索会议标题、客户名称...">
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-5">
+        <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#uploadMeetingModal">
+          <i class="bi bi-cloud-upload me-1"></i>上传会议录音
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 会议记录列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>会议标题</th>
+            <th>客户</th>
+            <th>上传时间</th>
+            <th>状态</th>
+            <th width="150">操作</th>
+          </tr>
+        </thead>
+        <tbody id="meetingTableBody">
+          <tr>
+            <td colspan="5" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-2">
+          <span>每页显示</span>
+          <select class="form-select form-select-sm" style="width: auto;" id="pageSizeSelect" onchange="changePageSize()">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          <span>条</span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center">
+          <span id="meetingCount">显示1-0条,共0条</span>
+          <nav>
+            <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 上传会议录音模态框 -->
+<div class="modal fade" id="uploadMeetingModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">上传会议录音</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="uploadMeetingForm">
+          <div class="mb-3">
+            <label class="form-label">会议标题 *</label>
+            <input type="text" class="form-control" name="title" required placeholder="例如: 与Apple公司的产品演示会议">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">会议日期</label>
+            <input type="date" class="form-control" name="meeting_date" id="meetingDate">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">关联客户</label>
+            <select class="form-select" name="customer_id" id="customerSelect">
+              <option value="">选择客户（可选）</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">会议录音文件 *</label>
+            <input type="file" class="form-control" name="video" id="meetingFile" accept="audio/*,video/*" required>
+            <small class="text-muted">支持 MP3, MP4, WAV, M4A 等格式，文件大小不超过 500MB</small>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">会议备注</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="会议的其他说明信息"></textarea>
+          </div>
+        </form>
+        
+        <div id="uploadProgress" style="display: none;">
+          <div class="progress mb-2">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                 style="width: 0%" id="progressBar"></div>
+          </div>
+          <p class="text-center mb-0" id="progressText">正在上传...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="uploadMeeting()">
+          <i class="bi bi-cloud-upload"></i> 上传并分析
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 会议详情模态框 -->
+<div class="modal fade" id="meetingDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">会议详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="meetingDetailBody">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-info" onclick="downloadTranscript()" id="downloadTranscriptBtn">
+          <i class="bi bi-file-text"></i> 下载文字稿 (.txt)
+        </button>
+        <button type="button" class="btn btn-primary" onclick="downloadAISummary()" id="downloadSummaryBtn">
+          <i class="bi bi-file-earmark-text"></i> 下载AI分析 (.md)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+let pageSize = 20;
+let currentMeetingId = null;
+let currentMeetingData = null; // 保存当前会议的完整数据
+
+$(document).ready(async function() {
+  await loadMeetings();
+  await loadCustomers();
+  $('#searchKeyword').on('input', debounce(searchMeetings, 500));
+});
+
+// 加载会议记录列表
+async function loadMeetings(page = 1) {
+  try {
+    const params = {
+      page: page,
+      pageSize: pageSize,
+      ...currentFilters
+    };
+
+    const response = await axios.get('/api/zoom-meetings/', { params });
+    const data = response.data;
+
+    currentPage = page;
+    renderMeetingTable(data.meetings || []);
+    renderPagination(data.page, data.total_pages);
+    updateMeetingCount(data.total, data.meetings?.length || 0, page);
+
+  } catch (error) {
+    console.error('加载会议记录失败:', error);
+    showToast('加载会议记录失败', 'danger');
+  }
+}
+
+// 渲染会议列表
+function renderMeetingTable(meetings) {
+  if (meetings.length === 0) {
+    $('#meetingTableBody').html(`
+      <tr>
+        <td colspan="5" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-camera-video"></i>
+            <h5>暂无会议记录</h5>
+            <p>上传您的第一个会议录音</p>
+          </div>
+        </td>
+      </tr>
+    `);
+    return;
+  }
+
+  let html = '';
+  meetings.forEach(meeting => {
+    const statusBadge = getStatusBadge(meeting.status);
+    const customerInfo = meeting.customer ? `${meeting.customer.name} (${meeting.customer.company})` : '-';
+
+    html += `
+      <tr class="clickable-row" onclick="showMeetingDetail(${meeting.id})" style="cursor: pointer;">
+        <td>
+          <div class="fw-bold">${meeting.meeting_title || '未命名会议'}</div>
+          ${meeting.meeting_date ? `<small class="text-muted">${formatDate(meeting.meeting_date)}</small>` : ''}
+        </td>
+        <td>${customerInfo}</td>
+        <td>${formatDate(meeting.created_at)}</td>
+        <td>${statusBadge}</td>
+        <td onclick="event.stopPropagation();">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="showMeetingDetail(${meeting.id})">
+                <i class="bi bi-eye"></i> 查看详情
+              </a></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAudio(${meeting.id})">
+                <i class="bi bi-download"></i> 下载录音
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="deleteMeeting(${meeting.id})">
+                <i class="bi bi-trash"></i> 删除
+              </a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  $('#meetingTableBody').html(html);
+}
+
+// 加载客户列表
+async function loadCustomers() {
+  try {
+    const response = await axios.get('/api/customers/');
+    const customers = response.data.customers || [];
+    
+    let html = '<option value="">选择客户（可选）</option>';
+    customers.forEach(customer => {
+      html += `<option value="${customer.id}">${customer.name} - ${customer.company}</option>`;
+    });
+    
+    $('#customerSelect').html(html);
+  } catch (error) {
+    console.error('加载客户列表失败:', error);
+  }
+}
+
+// 上传会议
+async function uploadMeeting() {
+  const title = $('input[name="title"]').val();
+  const customerId = $('select[name="customer_id"]').val();
+  const meetingDate = $('input[name="meeting_date"]').val();
+  const participants = $('input[name="participants"]').val();
+  const notes = $('textarea[name="notes"]').val();
+  const fileInput = document.getElementById('meetingFile');
+  
+  if (!title) {
+    showToast('请输入会议标题', 'warning');
+    return;
+  }
+  
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast('请选择会议录音文件', 'warning');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('meeting_title', title);
+  if (customerId) formData.append('customer_id', customerId);
+  if (meetingDate) formData.append('meeting_date', meetingDate);
+  if (participants) formData.append('participants', participants);
+  if (notes) formData.append('notes', notes);
+  formData.append('video', fileInput.files[0]);
+  
+  console.log('📤 上传会议数据:');
+  console.log('  - 会议标题:', title);
+  console.log('  - 客户ID:', customerId);
+  console.log('  - 会议日期:', meetingDate);
+  console.log('  - 文件:', fileInput.files[0].name);
+  
+  try {
+    $('#uploadProgress').show();
+    
+    const response = await axios.post('/api/zoom-meetings/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        $('#progressBar').css('width', percentCompleted + '%');
+        $('#progressText').text(`正在上传... ${percentCompleted}%`);
+      }
+    });
+    
+    showToast('会议录音上传成功，正在进行AI分析...', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('uploadMeetingModal')).hide();
+    $('#uploadMeetingForm')[0].reset();
+    $('#uploadProgress').hide();
+    
+    await loadMeetings(1);
+  } catch (error) {
+    console.error('上传会议失败:', error);
+    showToast(error.response?.data?.message || '上传失败', 'danger');
+    $('#uploadProgress').hide();
+  }
+}
+
+// 查看会议详情
+async function showMeetingDetail(meetingId) {
+  try {
+    currentMeetingId = meetingId;
+    const response = await axios.get(`/api/zoom-meetings/${meetingId}`);
+    const meeting = response.data.meeting;
+    currentMeetingData = meeting; // 保存完整会议数据
+    
+    console.log('📥 会议详情数据:', meeting);
+    
+    const html = `
+      <div class="meeting-detail">
+        <div class="mb-4">
+          <h6 class="text-muted mb-2">会议信息</h6>
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <strong>会议标题:</strong> ${meeting.meeting_title || '未命名会议'}
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong>会议日期:</strong> ${meeting.meeting_date ? new Date(meeting.meeting_date).toLocaleDateString('zh-CN') : '-'}
+            </div>
+            ${meeting.customer ? `
+              <div class="col-md-6 mb-2">
+                <strong>关联客户:</strong> <span class="text-dark">${meeting.customer.name} (${meeting.customer.company})</span>
+              </div>
+            ` : ''}
+            <div class="col-md-6 mb-2">
+              <strong>视频文件:</strong> ${meeting.video_file_name || '-'}
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong>文件大小:</strong> ${meeting.video_file_size ? (meeting.video_file_size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
+            </div>
+            <div class="col-md-6 mb-2">
+              <strong>状态:</strong> ${getStatusBadge(meeting.status)}
+            </div>
+          </div>
+        </div>
+        
+        ${meeting.ai_summary ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-2"><i class="bi bi-robot"></i> AI 会议总结</h6>
+            <div class="card">
+              <div class="card-body markdown-content" id="aiSummaryContent-${meeting.id}"></div>
+            </div>
+          </div>
+        ` : `
+          <div class="mb-4">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> ${meeting.status === 'completed' ? 'AI摘要生成失败' : 'AI摘要处理中，请稍后刷新查看'}
+            </div>
+          </div>
+        `}
+        
+        ${meeting.transcript_text ? `
+          <div class="mb-4">
+            <h6 class="text-muted mb-2"><i class="bi bi-file-text"></i> 会议文字稿</h6>
+            <div class="card">
+              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <div style="white-space: pre-line; font-family: inherit; line-height: 1.8;">${meeting.transcript_text}</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    $('#meetingDetailBody').html(html);
+    
+    // 渲染Markdown（在DOM插入后）
+    if (meeting.ai_summary && typeof marked !== 'undefined') {
+      setTimeout(() => {
+        const summaryEl = document.getElementById(`aiSummaryContent-${meeting.id}`);
+        if (summaryEl) {
+          try {
+            summaryEl.innerHTML = marked.parse(meeting.ai_summary);
+          } catch (e) {
+            console.error('Markdown渲染失败:', e);
+            summaryEl.textContent = meeting.ai_summary;
+          }
+        }
+      }, 100);
+    }
+    
+    new bootstrap.Modal(document.getElementById('meetingDetailModal')).show();
+  } catch (error) {
+    showToast('加载会议详情失败', 'danger');
+  }
+}
+
+// 删除会议
+async function deleteMeeting(id) {
+  if (!confirm('确定要删除这个会议记录吗？')) return;
+  
+  try {
+    await axios.delete(`/api/zoom-meetings/${id}`);
+    showToast('会议记录已删除', 'success');
+    await loadMeetings(currentPage);
+  } catch (error) {
+    showToast('删除失败', 'danger');
+  }
+}
+
+// 工具函数
+function getStatusBadge(status) {
+  const badges = {
+    'pending': '<span class="badge bg-info"><i class="bi bi-hourglass-split"></i> 等待处理</span>',
+    'processing': '<span class="badge bg-warning"><i class="bi bi-gear"></i> 处理中</span>',
+    'transcribing': '<span class="badge bg-primary"><i class="bi bi-mic"></i> 识别中</span>',
+    'summarizing': '<span class="badge bg-info"><i class="bi bi-robot"></i> 生成中</span>',
+    'completed': '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 已完成</span>',
+    'failed': '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> 失败</span>'
+  };
+  return badges[status] || `<span class="badge bg-secondary">${status || '未知'}</span>`;
+}
+
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) {
+    return `${hours}小时${minutes}分钟`;
+  }
+  return `${minutes}分钟`;
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN');
+}
+
+function searchMeetings() {
+  currentFilters = {};
+  const keyword = $('#searchKeyword').val();
+  if (keyword) currentFilters.search = keyword;
+  loadMeetings(1);
+}
+
+function changePageSize() {
+  pageSize = parseInt($('#pageSizeSelect').val());
+  loadMeetings(1);
+}
+
+function renderPagination(current, total) {
+  if (total <= 1) {
+    $('#pagination').html('');
+    return;
+  }
+  
+  let html = '';
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadMeetings(${current - 1}); return false;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+  `;
+  
+  for (let i = 1; i <= total; i++) {
+    html += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="loadMeetings(${i}); return false;">${i}</a>
+      </li>
+    `;
+  }
+  
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadMeetings(${current + 1}); return false;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  `;
+  
+  $('#pagination').html(html);
+}
+
+function updateMeetingCount(total, current, page) {
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  $('#meetingCount').text(`显示${start}-${end}条,共${total}条`);
+}
+
+// 筛选功能已移除
+
+// 下载录音（通过后端API）
+function downloadAudio(id) {
+  window.location.href = `/api/zoom-meetings/${id}/download`;
+}
+
+// 下载文字稿（前端生成.txt文件）
+function downloadTranscript() {
+  if (!currentMeetingData || !currentMeetingData.transcript_text) {
+    showWarning('暂无文字稿内容');
+    return;
+  }
+  
+  const meeting = currentMeetingData;
+  const fileName = `${meeting.meeting_title || '会议'}_文字稿_${new Date().toISOString().split('T')[0]}.txt`;
+  
+  // 构建文字稿内容
+  let content = `会议文字稿\n`;
+  content += `=====================================\n\n`;
+  content += `会议标题: ${meeting.meeting_title || '未命名会议'}\n`;
+  content += `会议日期: ${meeting.meeting_date ? new Date(meeting.meeting_date).toLocaleDateString('zh-CN') : '-'}\n`;
+  if (meeting.customer) {
+    content += `关联客户: ${meeting.customer.name} (${meeting.customer.company})\n`;
+  }
+  content += `生成时间: ${new Date().toLocaleString('zh-CN')}\n`;
+  content += `\n=====================================\n\n`;
+  content += meeting.transcript_text;
+  
+  // 创建并下载文件
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', fileName);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  showSuccess('文字稿下载成功');
+}
+
+// 下载AI分析（前端生成.md文件）
+function downloadAISummary() {
+  if (!currentMeetingData || !currentMeetingData.ai_summary) {
+    showWarning('暂无AI分析内容');
+    return;
+  }
+  
+  const meeting = currentMeetingData;
+  const fileName = `${meeting.meeting_title || '会议'}_AI分析_${new Date().toISOString().split('T')[0]}.md`;
+  
+  // 构建Markdown内容
+  let content = `# ${meeting.meeting_title || '会议'} - AI智能分析\n\n`;
+  content += `---\n\n`;
+  content += `## 📋 会议信息\n\n`;
+  content += `- **会议标题**: ${meeting.meeting_title || '未命名会议'}\n`;
+  content += `- **会议日期**: ${meeting.meeting_date ? new Date(meeting.meeting_date).toLocaleDateString('zh-CN') : '-'}\n`;
+  if (meeting.customer) {
+    content += `- **关联客户**: ${meeting.customer.name} (${meeting.customer.company})\n`;
+  }
+  content += `- **分析时间**: ${new Date().toLocaleString('zh-CN')}\n`;
+  content += `\n---\n\n`;
+  content += `## 🤖 AI会议总结\n\n`;
+  content += meeting.ai_summary;
+  content += `\n\n---\n\n`;
+  content += `*本分析由AI自动生成，仅供参考*\n`;
+  
+  // 创建并下载文件
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', fileName);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  showSuccess('AI分析下载成功');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function showToast(message, type) {
+  console.log(`${type}: ${message}`);
+}
+</script>
+
+

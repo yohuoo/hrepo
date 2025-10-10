@@ -1,0 +1,846 @@
+<!-- 海外客户搜索主页面 -->
+<div class="overseas-search-hero">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="search-hero-card">
+          <div class="search-hero-content">
+            <h1 class="search-title">海外客户搜索</h1>
+            <p class="search-description">通过AI智能分析，快速获取潜在海外客户列表，提升销售效率</p>
+            <button class="btn btn-primary btn-lg search-btn" id="searchButton">
+              <i class="bi bi-search"></i> 搜索潜在客户
+            </button>
+            <p class="search-hint">点击按钮获取AI推荐的海外客户列表</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 客户列表区域 -->
+<div class="container-fluid mt-4" id="customerListSection" style="display: none;">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">客户列表</h5>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="exportCustomers()">
+              <i class="bi bi-download"></i> 导出
+            </button>
+            <div class="dropdown">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-funnel"></i> 筛选
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="filterByCountry('all')">所有国家</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterByCountry('US')">美国</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterByCountry('UK')">英国</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterByCountry('DE')">德国</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterByCountry('JP')">日本</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>序号</th>
+                  <th>公司名称</th>
+                  <th>公司简介</th>
+                  <th>邮箱</th>
+                  <th>域名</th>
+                  <th>国家</th>
+                  <th>城市</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="overseasCustomerTableBody">
+                <!-- 客户数据将通过JavaScript动态加载 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 联系人列表模态框 -->
+<div class="modal fade" id="contactListModal" tabindex="-1" aria-labelledby="contactListModalLabel">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactListModalLabel">潜在联系人列表</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <input type="text" class="form-control" id="contactSearchInput" placeholder="搜索联系人">
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-primary btn-sm" onclick="selectAllContacts()">
+                <i class="bi bi-check-square"></i> 全选
+              </button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="clearContactSelection()">
+                <i class="bi bi-square"></i> 取消全选
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th width="50">
+                  <input type="checkbox" id="selectAllContacts" onchange="toggleAllContacts()">
+                </th>
+                <th>姓名</th>
+                <th>职位</th>
+                <th>公司</th>
+                <th>邮箱</th>
+                <th>简介</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="contactListTableBody">
+              <!-- 联系人数据将通过JavaScript动态加载 -->
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <div>
+            <span id="selectedContactsCount">已选择 0 人</span>
+          </div>
+          <div>
+            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-primary" onclick="proceedToEmailTemplate()">下一步</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 邮件模板选择模态框 -->
+<div class="modal fade" id="emailTemplateModal" tabindex="-1" aria-labelledby="emailTemplateModalLabel">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="emailTemplateModalLabel">选择邮件模板</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-header">
+                <h6>邮件模板</h6>
+                <button class="btn btn-sm btn-primary" onclick="createNewTemplate()">
+                  <i class="bi bi-plus"></i> 新建
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="list-group" id="templateList">
+                  <!-- 模板列表将通过JavaScript动态加载 -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="card">
+              <div class="card-header">
+                <h6>邮件预览</h6>
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-outline-primary" onclick="previousPreview()">
+                    <i class="bi bi-chevron-left"></i> 上一个
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" onclick="nextPreview()">
+                    下一个 <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="emailPreviewContent">
+                  <!-- 邮件预览内容将通过JavaScript动态加载 -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary" onclick="proceedToEmailSettings()">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 邮件发送设置模态框 -->
+<div class="modal fade" id="emailSettingsModal" tabindex="-1" aria-labelledby="emailSettingsModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="emailSettingsModalLabel">邮件发送设置</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">选择发件邮箱</label>
+          <select class="form-select" id="senderEmailSelect">
+            <!-- 发件邮箱选项将通过JavaScript动态加载 -->
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">发送时间</label>
+          <select class="form-select" id="sendTimeSelect">
+            <option value="immediate">立即发送</option>
+            <option value="scheduled">定时发送</option>
+          </select>
+        </div>
+        <div class="mb-3" id="scheduleTimeDiv" style="display: none;">
+          <label class="form-label">发送时间</label>
+          <input type="datetime-local" class="form-control" id="scheduleTime">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary" onclick="sendEmails()">
+          <i class="bi bi-send"></i> 发送邮件
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 全局变量
+let overseasCustomers = [];
+let selectedContacts = [];
+let currentTemplate = null;
+let currentPreviewIndex = 0;
+let emailPreviews = [];
+
+// 使用原生JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('✅ 海外客户搜索页面已加载');
+  initializePage();
+  
+  // 备用方案：通过JavaScript绑定点击事件
+  const searchBtn = document.querySelector('.search-btn');
+  if (searchBtn) {
+    console.log('✅ 找到搜索按钮，绑定点击事件');
+    searchBtn.addEventListener('click', function(e) {
+      console.log('🖱️ 搜索按钮点击事件触发（通过addEventListener）');
+      e.preventDefault();
+      searchOverseasCustomers();
+    });
+  } else {
+    console.error('❌ 未找到搜索按钮');
+  }
+});
+
+function initializePage() {
+  console.log('✅ 页面初始化完成');
+}
+
+// 搜索海外客户
+async function searchOverseasCustomers() {
+  console.log('✅ 搜索按钮被点击');
+  
+  try {
+    showLoading();
+    
+    console.log('🔄 调用后端海外客户搜索接口...');
+    
+    // 获取token
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showWarning('请先登录');
+      window.location.href = '/login';
+      return;
+    }
+    
+    // 使用fetch调用正确的接口
+    const response = await fetch('/api/overseas/companies/sugar-free', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    console.log('📥 服务器响应:', data);
+    
+    if (!data.success) {
+      showError('搜索失败: ' + (data.message || '未知错误'));
+      hideLoading();
+      return;
+    }
+    
+    // 将companies转换为customers格式
+    overseasCustomers = (data.companies || []).map(company => ({
+      company_name: company.company_name,
+      company_description: company.description,
+      email: company.email || '',
+      domain: company.website ? company.website.replace(/^https?:\/\/(www\.)?/, '') : '',
+      country: company.country,
+      city: company.city
+    }));
+    
+    if (overseasCustomers.length === 0) {
+      showInfo('未找到海外客户');
+      hideLoading();
+      return;
+    }
+    
+    console.log(`✅ 找到 ${overseasCustomers.length} 个海外客户`);
+    
+    // 显示客户列表
+    const customerListSection = document.getElementById('customerListSection');
+    if (customerListSection) {
+      customerListSection.style.display = 'block';
+    }
+    
+    renderOverseasCustomers();
+    showSuccess(`找到 ${overseasCustomers.length} 个海外客户`);
+    
+  } catch (error) {
+    console.error('❌ 搜索海外客户失败:', error);
+    showError('搜索失败，请稍后重试: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 渲染海外客户列表
+function renderOverseasCustomers() {
+  const tbody = document.getElementById('overseasCustomerTableBody');
+  if (!tbody) {
+    console.error('❌ 找不到客户列表表格');
+    return;
+  }
+  
+  let html = '';
+  
+  overseasCustomers.forEach((customer, index) => {
+    html += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${customer.company_name || '未知公司'}</td>
+        <td>${customer.company_description || '-'}</td>
+        <td>${customer.email || '-'}</td>
+        <td>${customer.domain || '-'}</td>
+        <td>${customer.country || '-'}</td>
+        <td>${customer.city || '-'}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="searchCompanyContacts('${customer.company_name}', '${customer.domain}')">
+            <i class="bi bi-person-lines-fill"></i> 联系人
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+  console.log('✅ 客户列表渲染完成');
+}
+
+// 搜索公司联系人
+async function searchCompanyContacts(companyName, domain) {
+  console.log('✅ 搜索联系人按钮被点击:', companyName, domain);
+  
+  try {
+    showLoading();
+    
+    // 获取token
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      showWarning('请先登录');
+      window.location.href = '/login';
+      return;
+    }
+    
+    console.log('🔄 调用Hunter.io接口搜索联系人...');
+    
+    // 使用fetch调用Hunter.io接口，避免baseURL重复问题
+    const url = `/api/hunter/domain-search?domain=${encodeURIComponent(domain)}&limit=10`;
+    console.log('📍 请求URL:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    console.log('📥 Hunter.io响应:', data);
+    
+    if (!data.success) {
+      showError('搜索联系人失败: ' + (data.message || '未知错误'));
+      hideLoading();
+      return;
+    }
+    
+    const contacts = data.contacts || [];
+    
+    if (contacts.length === 0) {
+      showInfo('未找到联系人');
+      hideLoading();
+      return;
+    }
+    
+    console.log(`✅ 找到 ${contacts.length} 个联系人`);
+    
+    // 保存到全局变量供后续使用
+    window.hunterContacts = contacts;
+    
+    // 先加载已存在的联系人邮箱列表
+    await loadExistingContacts();
+    
+    // 显示联系人列表模态框
+    const modalLabel = document.getElementById('contactListModalLabel');
+    if (modalLabel) {
+      modalLabel.textContent = `${companyName} - 潜在联系人列表`;
+    }
+    
+    renderContactList(contacts);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('contactListModal'));
+    modal.show();
+    
+  } catch (error) {
+    console.error('❌ 搜索联系人失败:', error);
+    showError('搜索联系人失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+// 渲染联系人列表
+function renderContactList(contacts) {
+  const tbody = document.getElementById('contactListTableBody');
+  if (!tbody) {
+    console.error('❌ 找不到联系人列表表格');
+    return;
+  }
+  
+  let html = '';
+  
+  contacts.forEach((contact, index) => {
+    const isExisting = checkIfContactExists(contact.email);
+    const contactName = contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+    
+    html += `
+      <tr>
+        <td>
+          <input type="checkbox" class="contact-checkbox" value="${index}" ${isExisting ? 'disabled' : ''}>
+        </td>
+        <td>${contactName || '-'}</td>
+        <td>${contact.position || '-'}</td>
+        <td>${contact.company || '-'}</td>
+        <td>${contact.email}</td>
+        <td>${contact.description || '-'}</td>
+        <td>
+          ${isExisting ? 
+            '<span class="badge bg-success"><i class="bi bi-check"></i> 已是联系人</span>' :
+            `<button class="btn btn-primary btn-sm" onclick="addContact(${index}); return false;">
+              <i class="bi bi-plus"></i> 添加
+            </button>`
+          }
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+  updateSelectedContactsCount();
+  console.log('✅ 联系人列表渲染完成');
+}
+
+// 全局变量：已存在的联系人邮箱列表
+let existingContactEmails = new Set();
+
+// 加载已存在的联系人
+async function loadExistingContacts() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/contacts/?pageSize=1000', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    if (data.success && data.contacts) {
+      existingContactEmails = new Set(data.contacts.map(c => c.email.toLowerCase()));
+      console.log('✅ 已加载现有联系人邮箱列表，共', existingContactEmails.size, '个');
+    }
+  } catch (error) {
+    console.error('加载现有联系人失败:', error);
+  }
+}
+
+// 检查联系人是否已存在
+function checkIfContactExists(email) {
+  return existingContactEmails.has(email.toLowerCase());
+}
+
+// 添加联系人
+async function addContact(index) {
+  console.log('✅ 添加联系人按钮被点击:', index);
+  const contact = window.hunterContacts[index];
+  
+  if (!contact) {
+    showError('联系人信息错误');
+    return;
+  }
+  
+  // 检查是否已存在
+  if (checkIfContactExists(contact.email)) {
+    showInfo('该联系人已存在，无需重复添加');
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/contacts/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: contact.name || `${contact.first_name} ${contact.last_name}`,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email,
+        company: contact.company,
+        domain: contact.domain,
+        position: contact.position
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('✅ 联系人添加成功');
+      
+      // 添加到已存在邮箱列表
+      existingContactEmails.add(contact.email.toLowerCase());
+      
+      // 重新渲染联系人列表，按钮会变成"已是联系人"
+      renderContactList(window.hunterContacts);
+      
+      showSuccess('联系人添加成功');
+    } else {
+      showError('添加失败: ' + (data.message || '未知错误'));
+    }
+    
+  } catch (error) {
+    console.error('❌ 添加联系人失败:', error);
+    showError('添加联系人失败: ' + error.message);
+  }
+}
+
+// 全选联系人
+function selectAllContacts() {
+  const checkboxes = document.querySelectorAll('.contact-checkbox:not(:disabled)');
+  checkboxes.forEach(cb => cb.checked = true);
+  updateSelectedContactsCount();
+}
+
+// 取消全选
+function clearContactSelection() {
+  const checkboxes = document.querySelectorAll('.contact-checkbox');
+  checkboxes.forEach(cb => cb.checked = false);
+  updateSelectedContactsCount();
+}
+
+// 切换全选
+function toggleAllContacts() {
+  const selectAll = document.getElementById('selectAllContacts');
+  const isChecked = selectAll ? selectAll.checked : false;
+  const checkboxes = document.querySelectorAll('.contact-checkbox:not(:disabled)');
+  checkboxes.forEach(cb => cb.checked = isChecked);
+  updateSelectedContactsCount();
+}
+
+// 更新选中联系人数量
+function updateSelectedContactsCount() {
+  const selectedCount = document.querySelectorAll('.contact-checkbox:checked').length;
+  const countElement = document.getElementById('selectedContactsCount');
+  if (countElement) {
+    countElement.textContent = `已选择 ${selectedCount} 人`;
+  }
+}
+
+// 进入邮件模板选择
+function proceedToEmailTemplate() {
+  const selectedContacts = getSelectedContacts();
+  
+  if (selectedContacts.length === 0) {
+    showToast('请选择至少一个联系人', 'warning');
+    return;
+  }
+  
+  // 关闭联系人列表模态框
+  $('#contactListModal').modal('hide');
+  
+  // 显示邮件模板选择模态框
+  loadEmailTemplates();
+  $('#emailTemplateModal').modal('show');
+}
+
+// 获取选中的联系人
+function getSelectedContacts() {
+  const selected = [];
+  $('.contact-checkbox:checked').each(function() {
+    const index = $(this).val();
+    selected.push(window.hunterContacts[index]);
+  });
+  return selected;
+}
+
+// 加载邮件模板
+async function loadEmailTemplates() {
+  try {
+    const response = await axios.get('/api/email-templates/');
+    const templates = response.data.templates || [];
+    
+    let html = '';
+    templates.forEach(template => {
+      html += `
+        <div class="list-group-item list-group-item-action template-item" data-template-id="${template.id}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1">${template.title}</h6>
+              <small class="text-muted">${template.description || '无描述'}</small>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="previewTemplate(${template.id})">
+              <i class="bi bi-eye"></i> 预览
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    
+    $('#templateList').html(html);
+    
+  } catch (error) {
+    console.error('加载邮件模板失败:', error);
+    showToast('加载邮件模板失败', 'danger');
+  }
+}
+
+// 预览邮件模板
+async function previewTemplate(templateId) {
+  try {
+    const selectedContacts = getSelectedContacts();
+    const contactIds = selectedContacts.map(contact => contact.id);
+    
+    const response = await axios.post('/api/email-templates/batch-preview', {
+      template_id: templateId,
+      contact_ids: contactIds
+    });
+    
+    emailPreviews = response.data.previews || [];
+    currentPreviewIndex = 0;
+    
+    renderEmailPreview();
+    
+  } catch (error) {
+    console.error('预览邮件模板失败:', error);
+    showToast('预览邮件模板失败', 'danger');
+  }
+}
+
+// 渲染邮件预览
+function renderEmailPreview() {
+  if (emailPreviews.length === 0) {
+    $('#emailPreviewContent').html('<div class="text-center p-4">暂无预览内容</div>');
+    return;
+  }
+  
+  const preview = emailPreviews[currentPreviewIndex];
+  const html = `
+    <div class="email-preview">
+      <div class="preview-header mb-3">
+        <h6>收件人: ${preview.contact_name} (${preview.contact_email})</h6>
+        <small class="text-muted">模板: ${preview.template_title}</small>
+      </div>
+      <div class="preview-content">
+        <pre style="white-space: pre-wrap; font-family: inherit;">${preview.rendered_content}</pre>
+      </div>
+      <div class="preview-footer mt-3">
+        <small class="text-muted">使用变量: ${preview.variables_used.join(', ')}</small>
+      </div>
+    </div>
+  `;
+  
+  $('#emailPreviewContent').html(html);
+}
+
+// 上一个预览
+function previousPreview() {
+  if (currentPreviewIndex > 0) {
+    currentPreviewIndex--;
+    renderEmailPreview();
+  }
+}
+
+// 下一个预览
+function nextPreview() {
+  if (currentPreviewIndex < emailPreviews.length - 1) {
+    currentPreviewIndex++;
+    renderEmailPreview();
+  }
+}
+
+// 进入邮件发送设置
+function proceedToEmailSettings() {
+  if (emailPreviews.length === 0) {
+    showToast('请先预览邮件模板', 'warning');
+    return;
+  }
+  
+  // 关闭邮件模板模态框
+  $('#emailTemplateModal').modal('hide');
+  
+  // 加载发件邮箱选项
+  loadSenderEmails();
+  
+  // 显示邮件发送设置模态框
+  $('#emailSettingsModal').modal('show');
+}
+
+// 加载发件邮箱
+async function loadSenderEmails() {
+  try {
+    const response = await axios.get('/api/user-email-bindings/');
+    const bindings = response.data.bindings || [];
+    
+    let html = '';
+    bindings.forEach(binding => {
+      const isDefault = binding.is_default ? ' (默认)' : '';
+      html += `<option value="${binding.id}">${binding.email_address}${isDefault}</option>`;
+    });
+    
+    $('#senderEmailSelect').html(html);
+    
+  } catch (error) {
+    console.error('加载发件邮箱失败:', error);
+    showToast('加载发件邮箱失败', 'danger');
+  }
+}
+
+// 发送邮件
+async function sendEmails() {
+  try {
+    const senderEmailId = $('#senderEmailSelect').val();
+    const sendTime = $('#sendTimeSelect').val();
+    const scheduleTime = $('#scheduleTime').val();
+    
+    if (!senderEmailId) {
+      showToast('请选择发件邮箱', 'warning');
+      return;
+    }
+    
+    showLoading();
+    
+    const selectedContacts = getSelectedContacts();
+    const contactIds = selectedContacts.map(contact => contact.id);
+    
+    const response = await axios.post('/api/emails/send-batch', {
+      template_id: currentTemplate,
+      contact_ids: contactIds,
+      sender_email_binding_id: senderEmailId,
+      send_time: sendTime === 'scheduled' ? scheduleTime : null
+    });
+    
+    showToast('邮件发送成功', 'success');
+    $('#emailSettingsModal').modal('hide');
+    
+  } catch (error) {
+    console.error('发送邮件失败:', error);
+    showToast('发送邮件失败', 'danger');
+  } finally {
+    hideLoading();
+  }
+}
+
+// 导出客户
+function exportCustomers() {
+  if (overseasCustomers.length === 0) {
+    showToast('没有可导出的客户数据', 'warning');
+    return;
+  }
+  
+  // 创建CSV内容
+  let csvContent = '序号,公司名称,公司简介,邮箱,域名,国家,城市\n';
+  overseasCustomers.forEach((customer, index) => {
+    csvContent += `${index + 1},"${customer.company_name}","${customer.company_description}","${customer.email}","${customer.domain}","${customer.country}","${customer.city}"\n`;
+  });
+  
+  // 下载CSV文件
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', '海外客户列表.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast('客户数据导出成功', 'success');
+}
+
+// 按国家筛选
+function filterByCountry(country) {
+  // 实现按国家筛选客户的功能
+  console.log('按国家筛选:', country);
+}
+
+// 创建新模板
+function createNewTemplate() {
+  window.location.href = '/emails/templates';
+}
+
+// 工具函数
+function showLoading() {
+  console.log('🔄 显示加载中...');
+  const loadingHTML = `
+    <div class="loading-overlay" id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">加载中...</span>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', loadingHTML);
+}
+
+function hideLoading() {
+  console.log('✅ 隐藏加载中');
+  const loading = document.getElementById('loadingOverlay');
+  if (loading) {
+    loading.remove();
+  }
+}
+
+// Toast函数已在main.js中定义，这里不需要重复定义
+</script>
