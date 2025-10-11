@@ -1,0 +1,1023 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/settings/users">系统设置</a></li>
+        <li class="breadcrumb-item active">页面权限管理</li>
+      </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="page-title">
+          <i class="bi bi-shield-lock"></i> 页面权限管理
+        </h1>
+        <p class="page-subtitle text-muted">配置部门和用户的页面访问权限</p>
+      </div>
+      <button class="btn btn-outline-secondary" onclick="showAuditLogs()">
+        <i class="bi bi-clock-history"></i> 修改日志
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 顶部操作栏 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">权限对象</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="targetType" id="btnDepartment" value="department" checked>
+          <label class="btn btn-outline-primary" for="btnDepartment" onclick="switchTargetType('department')">
+            <i class="bi bi-building"></i> 按部门
+          </label>
+          
+          <input type="radio" class="btn-check" name="targetType" id="btnUser" value="user">
+          <label class="btn btn-outline-primary" for="btnUser" onclick="switchTargetType('user')">
+            <i class="bi bi-person"></i> 按用户
+          </label>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <label class="form-label">搜索</label>
+        <input type="text" class="form-control" id="searchInput" 
+               placeholder="搜索部门名称或用户名/邮箱..." 
+               oninput="filterTargetList()">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 主要内容区 -->
+<div class="row">
+  <!-- 左侧：部门/用户列表 -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header bg-white border-bottom">
+        <h6 class="mb-0" id="listTitle">
+          <i class="bi bi-building"></i> 部门列表
+        </h6>
+      </div>
+      <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+        <div class="list-group list-group-flush" id="targetList">
+          <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">加载中...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 右侧：权限配置树 -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-0">
+              <i class="bi bi-diagram-3"></i> 权限配置
+              <span class="badge bg-secondary ms-2" id="currentTargetBadge">请选择</span>
+            </h6>
+          </div>
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-success" id="selectAllBtn" onclick="selectAllPermissions()" disabled>
+              <i class="bi bi-check-all"></i> 全选
+            </button>
+            <button class="btn btn-outline-warning" id="clearAllBtn" onclick="clearAllPermissions()" disabled>
+              <i class="bi bi-x-lg"></i> 清除
+            </button>
+            <button class="btn btn-primary" id="savePermissionsBtn" onclick="savePermissions()" disabled>
+              <i class="bi bi-save"></i> 保存
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" id="permissionTreeContainer" style="max-height: 600px; overflow-y: auto;">
+        <div class="text-muted text-center p-5">
+          <i class="bi bi-hand-index" style="font-size: 3rem; opacity: 0.3;"></i>
+          <p class="mt-3">请先从左侧选择部门或用户</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 审计日志模态框 -->
+<div class="modal fade" id="auditLogsModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-clock-history"></i> 权限修改日志
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>时间</th>
+                <th>操作人</th>
+                <th>操作类型</th>
+                <th>目标</th>
+                <th>变更内容</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsBody">
+              <tr>
+                <td colspan="5" class="text-center p-5">
+                  <div class="spinner-border text-primary"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.permission-tree {
+  font-size: 14px;
+}
+
+/* 一级菜单卡片 */
+.permission-group {
+  margin-bottom: 1.25rem;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: #ffffff;
+}
+
+/* 一级菜单头部 */
+.permission-group-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.permission-group-body {
+  padding: 0;
+}
+
+.permission-group-header label {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: #212529;
+}
+
+.permission-group-header input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+/* 二级页面 - 缩进2个字符 */
+.permission-tree .permission-subitem {
+  background: #fafbfc !important;
+  margin: 0 !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-right: 1.25rem !important;
+  padding-left: 3em !important;  /* 使用em单位，3个字符宽度 */
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.permission-tree .permission-subitem:last-child {
+  border-bottom: none !important;
+}
+
+.permission-tree .permission-subitem label {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #495057;
+}
+
+.permission-tree .permission-subitem input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+/* 三级操作 - 缩进4个字符 */
+.permission-tree .permission-action {
+  background: #ffffff !important;
+  margin: 0 !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  padding-right: 1.25rem !important;
+  padding-left: 6em !important;  /* 使用em单位，6个字符宽度 */
+  border-bottom: 1px solid #f8f9fa !important;
+}
+
+.permission-tree .permission-action:last-child {
+  border-bottom: none !important;
+}
+
+.permission-tree .permission-action label {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.permission-tree .permission-action input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* 左侧列表 */
+.target-list-item {
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.target-list-item:hover {
+  background-color: #f8f9fa;
+  border-left-color: #adb5bd;
+}
+
+.target-list-item.active {
+  background-color: #e7f1ff;
+  border-left-color: #0d6efd;
+  font-weight: 500;
+}
+
+/* 徽章 */
+.badge-system {
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+/* checkbox美化 */
+input[type="checkbox"]:indeterminate {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* 禁用状态 */
+input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+label:has(input[type="checkbox"]:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>
+
+<script>
+let currentTargetType = 'department';
+let currentTargetId = null;
+let currentTargetName = '';
+let allDepartments = [];
+let allUsers = [];
+let pageTree = [];
+let currentPermissions = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('🚀 页面权限管理页面加载');
+  
+  // 加载初始数据
+  await Promise.all([
+    loadDepartments(),
+    loadUsers(),
+    loadPageTree()
+  ]);
+  
+  // 显示部门列表
+  renderTargetList();
+});
+
+// 加载部门列表
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/departments/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    allDepartments = data.departments || [];
+    console.log('📁 部门数量:', allDepartments.length);
+  } catch (error) {
+    console.error('加载部门失败:', error);
+  }
+}
+
+// 加载用户列表
+async function loadUsers() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/users?pageSize=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    allUsers = data.users || [];
+    console.log('👥 用户数量:', allUsers.length);
+  } catch (error) {
+    console.error('加载用户失败:', error);
+  }
+}
+
+// 加载页面树
+async function loadPageTree() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/page-permissions/pages/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      pageTree = data.tree || [];
+      console.log('🌲 页面树加载成功，一级菜单数:', pageTree.length);
+    }
+  } catch (error) {
+    console.error('加载页面树失败:', error);
+  }
+}
+
+// 切换目标类型
+function switchTargetType(type) {
+  currentTargetType = type;
+  currentTargetId = null;
+  currentTargetName = '';
+  
+  // 更新列表标题
+  document.getElementById('listTitle').innerHTML = type === 'department' 
+    ? '<i class="bi bi-building"></i> 部门列表'
+    : '<i class="bi bi-person"></i> 用户列表';
+  
+  // 更新搜索占位符
+  document.getElementById('searchInput').placeholder = type === 'department'
+    ? '搜索部门名称...'
+    : '搜索用户名或邮箱...';
+  
+  // 清空搜索
+  document.getElementById('searchInput').value = '';
+  
+  // 渲染列表
+  renderTargetList();
+  
+  // 清空权限树
+  showEmptyPermissionTree();
+}
+
+// 扁平化部门树
+function flattenDepartments(departments, level = 0) {
+  let result = [];
+  departments.forEach(dept => {
+    result.push({ ...dept, level });
+    if (dept.children && dept.children.length > 0) {
+      result = result.concat(flattenDepartments(dept.children, level + 1));
+    }
+  });
+  return result;
+}
+
+// 渲染目标列表
+function renderTargetList() {
+  const listContainer = document.getElementById('targetList');
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  
+  if (currentTargetType === 'department') {
+    const flatDepts = flattenDepartments(allDepartments);
+    const filtered = flatDepts.filter(dept => 
+      dept.name.toLowerCase().includes(searchTerm)
+    );
+    
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div class="text-center p-4 text-muted">暂无数据</div>';
+      return;
+    }
+    
+    let html = '';
+    filtered.forEach(dept => {
+      const indent = '　'.repeat(dept.level);
+      html += `
+        <a href="javascript:void(0)" 
+           class="list-group-item list-group-item-action target-list-item" 
+           onclick="selectTarget('department', ${dept.id}, '${dept.name.replace(/'/g, "\\'")}')">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>
+              ${indent}
+              <i class="bi bi-building text-primary me-2"></i>
+              <strong>${dept.name}</strong>
+            </span>
+            ${dept.manager_name ? `<small class="text-muted">负责人: ${dept.manager_name}</small>` : ''}
+          </div>
+        </a>
+      `;
+    });
+    listContainer.innerHTML = html;
+  } else {
+    const filtered = allUsers.filter(user => 
+      user.username.toLowerCase().includes(searchTerm) ||
+      (user.email && user.email.toLowerCase().includes(searchTerm))
+    );
+    
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div class="text-center p-4 text-muted">暂无数据</div>';
+      return;
+    }
+    
+    let html = '';
+    filtered.forEach(user => {
+      const roleText = user.role === 'super_admin' ? '超级管理员' : 
+                      user.role === 'admin' ? '管理员' : '普通用户';
+      const roleClass = user.role === 'super_admin' ? 'danger' : 
+                       user.role === 'admin' ? 'warning' : 'secondary';
+      
+      html += `
+        <a href="javascript:void(0)" 
+           class="list-group-item list-group-item-action target-list-item"
+           onclick="selectTarget('user', ${user.id}, '${user.username.replace(/'/g, "\\'")}')">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <i class="bi bi-person-circle text-primary me-2"></i>
+              <strong>${user.username}</strong>
+              <span class="badge bg-${roleClass} ms-2">${roleText}</span>
+            </div>
+            <small class="text-muted">${user.email}</small>
+          </div>
+        </a>
+      `;
+    });
+    listContainer.innerHTML = html;
+  }
+}
+
+// 筛选目标列表
+function filterTargetList() {
+  renderTargetList();
+}
+
+// 选择目标
+async function selectTarget(type, id, name) {
+  currentTargetType = type;
+  currentTargetId = id;
+  currentTargetName = name;
+  
+  console.log('📍 选择目标:', { type, id, name });
+  
+  // 更新选中状态
+  document.querySelectorAll('.target-list-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  event.currentTarget.classList.add('active');
+  
+  // 更新徽章
+  document.getElementById('currentTargetBadge').textContent = name;
+  
+  // 启用按钮
+  document.getElementById('savePermissionsBtn').disabled = false;
+  document.getElementById('selectAllBtn').disabled = false;
+  document.getElementById('clearAllBtn').disabled = false;
+  
+  // 加载该目标的权限
+  await loadTargetPermissions(type, id);
+  
+  // 渲染权限树
+  renderPermissionTree();
+}
+
+// 加载目标的权限配置
+async function loadTargetPermissions(type, id) {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`/api/page-permissions/target/${type}/${id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      currentPermissions = data.permissions || [];
+      console.log('✅ 权限数量:', currentPermissions.length);
+    }
+  } catch (error) {
+    console.error('加载权限失败:', error);
+    currentPermissions = [];
+  }
+}
+
+// 显示空的权限树
+function showEmptyPermissionTree() {
+  const container = document.getElementById('permissionTreeContainer');
+  container.innerHTML = `
+    <div class="text-muted text-center p-5">
+      <i class="bi bi-hand-index" style="font-size: 3rem; opacity: 0.3;"></i>
+      <p class="mt-3">请先从左侧选择部门或用户</p>
+    </div>
+  `;
+  document.getElementById('currentTargetBadge').textContent = '请选择';
+  document.getElementById('savePermissionsBtn').disabled = true;
+  document.getElementById('selectAllBtn').disabled = true;
+  document.getElementById('clearAllBtn').disabled = true;
+}
+
+// 全选权限
+function selectAllPermissions() {
+  if (!currentTargetId) return;
+  
+  console.log('✅ 全选所有权限');
+  
+  // 获取所有非系统页面的code
+  const allCodes = [];
+  
+  pageTree.forEach(menu => {
+    if (!menu.is_system) {
+      allCodes.push(menu.code);
+      
+      if (menu.children) {
+        menu.children.forEach(page => {
+          if (!page.is_system) {
+            allCodes.push(page.code);
+            
+            if (page.children) {
+              page.children.forEach(action => {
+                if (!action.is_system) {
+                  allCodes.push(action.code);
+                }
+              });
+            }
+          }
+        });
+      }
+    }
+  });
+  
+  currentPermissions = allCodes;
+  console.log('  已选择权限数量:', currentPermissions.length);
+  
+  // 重新渲染
+  renderPermissionTree();
+  
+  showSuccess('已全选所有权限');
+}
+
+// 清除所有权限
+function clearAllPermissions() {
+  if (!currentTargetId) return;
+  
+  console.log('🗑️ 清除所有权限');
+  
+  currentPermissions = [];
+  
+  // 重新渲染
+  renderPermissionTree();
+  
+  showWarning('已清除所有权限');
+}
+
+// 渲染权限树
+function renderPermissionTree() {
+  const container = document.getElementById('permissionTreeContainer');
+  
+  if (!currentTargetId) {
+    showEmptyPermissionTree();
+    return;
+  }
+  
+  let html = '<div class="permission-tree">';
+  
+  // 遍历一级菜单
+  pageTree.forEach((menu, menuIdx) => {
+    // 跳过系统菜单（实际上目前没有系统一级菜单）
+    if (menu.is_system) return;
+    
+    const menuHasPermission = currentPermissions.includes(menu.code);
+    
+    html += `
+      <div class="permission-group">
+        <div class="permission-group-header">
+          <label>
+            <input type="checkbox" 
+                   id="menu-${menu.code}" 
+                   value="${menu.code}"
+                   ${menuHasPermission ? 'checked' : ''}
+                   onchange="toggleMenu('${menu.code}')">
+            <i class="${menu.icon} me-2" style="font-size: 18px; color: #0d6efd;"></i>
+            <span class="flex-grow-1">${menu.name}</span>
+          </label>
+        </div>
+        <div class="permission-group-body">
+    `;
+    
+    // 遍历二级页面
+    if (menu.children && menu.children.length > 0) {
+      menu.children.forEach((page, pageIdx) => {
+        // 跳过系统页面（如"页面权限"）
+        if (page.is_system) return;
+        
+        const pageHasPermission = currentPermissions.includes(page.code);
+        
+        html += `
+          <div class="permission-subitem" style="padding-left: 3em !important; background: #fafbfc; padding-top: 0.75rem; padding-bottom: 0.75rem; padding-right: 1.25rem; border-bottom: 1px solid #f0f0f0;">
+            <label style="display: flex; align-items: center; margin-bottom: 0; cursor: pointer;">
+              <input type="checkbox" 
+                     id="page-${page.code}" 
+                     value="${page.code}"
+                     data-parent="${menu.code}"
+                     ${pageHasPermission ? 'checked' : ''}
+                     onchange="togglePage('${page.code}', '${menu.code}')"
+                     style="width: 18px; height: 18px; margin-right: 10px; cursor: pointer;">
+              <i class="bi bi-file-text me-2" style="font-size: 14px; color: #6c757d;"></i>
+              <span class="flex-grow-1" style="font-size: 14px; color: #495057;">${page.name}</span>
+            </label>
+        `;
+        
+        // 遍历操作（三级）
+        if (page.children && page.children.length > 0) {
+          page.children.forEach((action, actionIdx) => {
+            // 跳过系统操作
+            if (action.is_system) return;
+            
+            const actionHasPermission = currentPermissions.includes(action.code);
+            
+            html += `
+              <div class="permission-action" style="padding-left: 6em !important; background: #ffffff; padding-top: 0.5rem; padding-bottom: 0.5rem; padding-right: 1.25rem; border-bottom: 1px solid #f8f9fa;">
+                <label style="display: flex; align-items: center; margin-bottom: 0; cursor: pointer;">
+                  <input type="checkbox" 
+                         id="action-${action.code}" 
+                         value="${action.code}"
+                         data-parent="${page.code}"
+                         data-grandparent="${menu.code}"
+                         ${actionHasPermission ? 'checked' : ''}
+                         onchange="toggleAction('${action.code}', '${page.code}', '${menu.code}')"
+                         style="width: 16px; height: 16px; margin-right: 8px; cursor: pointer;">
+                  <i class="bi bi-lightning me-2" style="font-size: 12px; color: #adb5bd;"></i>
+                  <span style="font-size: 13px; color: #6c757d;">${action.name}</span>
+                </label>
+              </div>
+            `;
+          });
+        }
+        
+        html += `</div>`;  // 关闭 permission-subitem
+      });
+    }
+    
+    html += `
+        </div>
+      </div>
+    `;  // 关闭 permission-group-body 和 permission-group
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+  
+  // 更新半选状态
+  updateIndeterminateStates();
+}
+
+// 切换一级菜单
+function toggleMenu(menuCode) {
+  const checkbox = document.getElementById(`menu-${menuCode}`);
+  const isChecked = checkbox.checked;
+  
+  // 获取该菜单下的所有页面和操作
+  const menu = pageTree.find(m => m.code === menuCode);
+  if (!menu || menu.is_system) return;
+  
+  const codes = [menuCode];
+  
+  if (menu.children) {
+    menu.children.forEach(page => {
+      if (!page.is_system) {
+        codes.push(page.code);
+        if (page.children) {
+          page.children.forEach(action => {
+            if (!action.is_system) {
+              codes.push(action.code);
+            }
+          });
+        }
+      }
+    });
+  }
+  
+  // 更新权限数组
+  if (isChecked) {
+    codes.forEach(code => {
+      if (!currentPermissions.includes(code)) {
+        currentPermissions.push(code);
+      }
+    });
+  } else {
+    currentPermissions = currentPermissions.filter(code => !codes.includes(code));
+  }
+  
+  // 重新渲染
+  renderPermissionTree();
+}
+
+// 切换二级页面
+function togglePage(pageCode, menuCode) {
+  const checkbox = document.getElementById(`page-${pageCode}`);
+  const isChecked = checkbox.checked;
+  
+  const menu = pageTree.find(m => m.code === menuCode);
+  const page = menu?.children.find(p => p.code === pageCode);
+  
+  if (!page || page.is_system) return;
+  
+  const codes = [pageCode];
+  
+  if (page.children) {
+    page.children.forEach(action => {
+      if (!action.is_system) {
+        codes.push(action.code);
+      }
+    });
+  }
+  
+  // 更新权限
+  if (isChecked) {
+    codes.forEach(code => {
+      if (!currentPermissions.includes(code)) {
+        currentPermissions.push(code);
+      }
+    });
+  } else {
+    currentPermissions = currentPermissions.filter(code => !codes.includes(code));
+  }
+  
+  // 重新渲染
+  renderPermissionTree();
+}
+
+// 切换操作
+function toggleAction(actionCode, pageCode, menuCode) {
+  const checkbox = document.getElementById(`action-${actionCode}`);
+  const isChecked = checkbox.checked;
+  
+  if (isChecked) {
+    if (!currentPermissions.includes(actionCode)) {
+      currentPermissions.push(actionCode);
+    }
+  } else {
+    currentPermissions = currentPermissions.filter(code => code !== actionCode);
+  }
+  
+  // 重新渲染
+  renderPermissionTree();
+}
+
+// 更新半选状态
+function updateIndeterminateStates() {
+  pageTree.forEach(menu => {
+    const menuCheckbox = document.getElementById(`menu-${menu.code}`);
+    if (!menuCheckbox) return;
+    
+    // 检查子页面状态
+    if (menu.children && menu.children.length > 0) {
+      const nonSystemChildren = menu.children.filter(p => !p.is_system);
+      if (nonSystemChildren.length === 0) return;
+      
+      const checkedCount = nonSystemChildren.filter(p => 
+        currentPermissions.includes(p.code)
+      ).length;
+      
+      if (checkedCount === 0) {
+        menuCheckbox.checked = false;
+        menuCheckbox.indeterminate = false;
+      } else if (checkedCount === nonSystemChildren.length) {
+        menuCheckbox.checked = true;
+        menuCheckbox.indeterminate = false;
+      } else {
+        menuCheckbox.checked = false;
+        menuCheckbox.indeterminate = true;
+      }
+    }
+    
+    // 检查二级页面的半选状态
+    if (menu.children) {
+      menu.children.forEach(page => {
+        const pageCheckbox = document.getElementById(`page-${page.code}`);
+        if (!pageCheckbox || page.is_system) return;
+        
+        if (page.children && page.children.length > 0) {
+          const nonSystemActions = page.children.filter(a => !a.is_system);
+          if (nonSystemActions.length === 0) return;
+          
+          const checkedCount = nonSystemActions.filter(a => 
+            currentPermissions.includes(a.code)
+          ).length;
+          
+          if (checkedCount === 0) {
+            pageCheckbox.checked = false;
+            pageCheckbox.indeterminate = false;
+          } else if (checkedCount === nonSystemActions.length) {
+            pageCheckbox.checked = true;
+            pageCheckbox.indeterminate = false;
+          } else {
+            pageCheckbox.checked = false;
+            pageCheckbox.indeterminate = true;
+          }
+        }
+      });
+    }
+  });
+}
+
+// 保存权限
+async function savePermissions() {
+  if (!currentTargetId) {
+    showWarning('请先选择部门或用户');
+    return;
+  }
+  
+  console.log('💾 开始保存权限:', {
+    targetType: currentTargetType,
+    targetId: currentTargetId,
+    targetName: currentTargetName,
+    permissionCount: currentPermissions.length,
+    permissions: currentPermissions
+  });
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    const saveBtn = document.getElementById('savePermissionsBtn');
+    
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>保存中...';
+    
+    const requestBody = {
+      permissions: currentPermissions
+    };
+    
+    console.log('📤 发送请求:', requestBody);
+    
+    const response = await fetch(`/api/page-permissions/target/${currentTargetType}/${currentTargetId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    console.log('📥 响应状态:', response.status);
+    const data = await response.json();
+    console.log('📦 响应数据:', data);
+    
+    if (data.success) {
+      showSuccess(`权限保存成功！新增${data.result.added.length}项，移除${data.result.removed.length}项`);
+    } else {
+      showError(data.message || '保存失败');
+    }
+  } catch (error) {
+    console.error('❌ 保存权限失败:', error);
+    showError('保存失败: ' + error.message);
+  } finally {
+    const saveBtn = document.getElementById('savePermissionsBtn');
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="bi bi-save"></i> 保存权限';
+  }
+}
+
+// 显示审计日志
+async function showAuditLogs() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/page-permissions/audit-logs?page=1&page_size=100', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('加载日志失败');
+      return;
+    }
+    
+    renderAuditLogs(data.logs || []);
+    new bootstrap.Modal(document.getElementById('auditLogsModal')).show();
+    
+  } catch (error) {
+    console.error('加载审计日志失败:', error);
+    showError('加载日志失败');
+  }
+}
+
+// 渲染审计日志
+function renderAuditLogs(logs) {
+  const tbody = document.getElementById('auditLogsBody');
+  
+  if (logs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="text-center p-5 text-muted">暂无修改日志</td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  logs.forEach(log => {
+    const added = log.changes?.added || [];
+    const removed = log.changes?.removed || [];
+    
+    let changesHtml = '';
+    if (added.length > 0) {
+      changesHtml += `<div class="text-success"><i class="bi bi-plus-circle"></i> 新增: ${added.map(c => c.name).join(', ')}</div>`;
+    }
+    if (removed.length > 0) {
+      changesHtml += `<div class="text-danger"><i class="bi bi-dash-circle"></i> 移除: ${removed.map(c => c.name).join(', ')}</div>`;
+    }
+    if (!changesHtml) {
+      changesHtml = '<span class="text-muted">无变更</span>';
+    }
+    
+    const targetTypeName = log.target_type === 'department' ? '部门' : '用户';
+    
+    html += `
+      <tr>
+        <td>${new Date(log.created_at).toLocaleString('zh-CN')}</td>
+        <td>
+          <i class="bi bi-person-circle text-primary me-1"></i>
+          ${log.operator_name}
+        </td>
+        <td>
+          <span class="badge bg-info">${log.action_type}</span>
+        </td>
+        <td>
+          <i class="bi bi-${log.target_type === 'department' ? 'building' : 'person'} me-1"></i>
+          ${targetTypeName}: ${log.target_name}
+        </td>
+        <td>${changesHtml}</td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+}
+
+// Toast提示
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
+}
+</script>
+

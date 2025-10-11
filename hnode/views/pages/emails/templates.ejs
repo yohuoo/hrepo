@@ -132,10 +132,15 @@
                 <form id="emailForm">
                   <div class="mb-3">
                     <label class="form-label">收件人</label>
-                    <input type="text" class="form-control" id="recipients" placeholder="请选择收件人" readonly>
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="selectRecipients()">
-                      <i class="bi bi-pencil"></i> 编辑收件人
-                    </button>
+                    <input type="text" class="form-control" id="recipients" placeholder="点击选择收件人" readonly onclick="selectRecipients()" style="cursor: pointer;">
+                    <div class="mt-2 d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectRecipients()">
+                        <i class="bi bi-pencil"></i> 编辑收件人
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllRecipients()" id="clearRecipientsBtn" style="display: none;">
+                        <i class="bi bi-x-circle"></i> 清空收件人
+                      </button>
+                    </div>
                   </div>
                   
                   <div class="mb-3">
@@ -195,63 +200,45 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="row">
-          <div class="col-md-4">
-            <div class="card">
-              <div class="card-header">
-                <h6>搜索和筛选</h6>
-              </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <input type="text" class="form-control" placeholder="搜索联系人" id="contactSearch">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">按标签筛选</label>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="tagPotential">
-                    <label class="form-check-label" for="tagPotential">潜在客户</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="tagConverted">
-                    <label class="form-check-label" for="tagConverted">已成交客户</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="tagKey">
-                    <label class="form-check-label" for="tagKey">重点客户</label>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">按公司筛选</label>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="company1">
-                    <label class="form-check-label" for="company1">Apple Inc.</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="company2">
-                    <label class="form-check-label" for="company2">Microsoft</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="company3">
-                    <label class="form-check-label" for="company3">Google</label>
-                  </div>
-                </div>
-              </div>
+        <!-- 类型切换和搜索 -->
+        <div class="row mb-3">
+          <div class="col-md-12">
+            <div class="btn-group w-100 mb-3" role="group">
+              <button type="button" class="btn btn-outline-primary active" id="btnContacts" onclick="switchRecipientType('contacts')">
+                <i class="bi bi-person-lines-fill"></i> 联系人
+              </button>
+              <button type="button" class="btn btn-outline-primary" id="btnCustomers" onclick="switchRecipientType('customers')">
+                <i class="bi bi-people"></i> 客户
+              </button>
+            </div>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" placeholder="搜索名称、公司或域名..." id="recipientSearch" oninput="searchRecipients()">
             </div>
           </div>
-          <div class="col-md-8">
+        </div>
+        
+        <!-- 收件人列表 -->
+        <div class="row">
+          <div class="col-md-12">
             <div class="card">
               <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                  <h6 class="mb-0">联系人列表</h6>
+                  <h6 class="mb-0" id="recipientListTitle">联系人列表</h6>
                   <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="selectAllContacts()">全选</button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">筛选</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectAllRecipients()">全选</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">清空</button>
                   </div>
                 </div>
               </div>
-              <div class="card-body">
-                <div id="contactList">
-                  <!-- 联系人列表将通过JavaScript动态加载 -->
+              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <div id="recipientList">
+                  <!-- 收件人列表将通过JavaScript动态加载 -->
+                  <div class="text-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">加载中...</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -260,7 +247,7 @@
       </div>
       <div class="modal-footer">
         <div class="d-flex justify-content-between align-items-center w-100">
-          <span id="selectedContactsCount">已选择 0 人</span>
+          <span id="selectedRecipientsCount">已选择 0 人</span>
           <div>
             <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
             <button class="btn btn-primary" onclick="confirmRecipients()">确定</button>
@@ -271,11 +258,80 @@
   </div>
 </div>
 
+<!-- AI辅助预览模态框（用于模板） -->
+<div class="modal fade" id="aiTemplatePreviewModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-gradient-primary text-white">
+        <h5 class="modal-title" id="aiTemplateModalTitle">
+          <i class="bi bi-stars"></i> AI生成结果
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="aiTemplateModalBody">
+        <div class="text-center p-5">
+          <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+          <p class="loading-text">生成中<span class="loading-dots">.</span></p>
+        </div>
+      </div>
+      <div class="modal-footer" id="aiTemplateModalFooter" style="display: none;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg"></i> 取消
+        </button>
+        <button type="button" class="btn btn-primary" onclick="applyTemplateAIResult()">
+          <i class="bi bi-check-lg"></i> 替换原内容
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* AI模态框样式 */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.bg-gradient-info {
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+}
+
+.ai-preview-content {
+  padding: 20px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  min-height: 100px;
+  white-space: pre-line;
+  line-height: 1.8;
+  color: #212529;
+  font-size: 0.95rem;
+}
+
+.ai-preview-label {
+  font-weight: 700;
+  color: #495057;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-dots {
+  display: inline-block;
+  width: 20px;
+  text-align: left;
+}
+</style>
+
 <script>
 // 全局变量
 let currentTemplates = [];
 let selectedRecipients = [];
 let currentTemplate = null;
+let aiGeneratedTemplateTitle = '';
+let aiGeneratedTemplateContent = '';
+let loadingDotsInterval = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ 邮件模板页面已加载');
@@ -296,14 +352,44 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 更新收件人显示
 function updateRecipientDisplay() {
   const recipientsInput = document.getElementById('recipients');
+  const clearBtn = document.getElementById('clearRecipientsBtn');
+  
   if (recipientsInput) {
     if (selectedRecipients.length === 0) {
       recipientsInput.value = '';
-      recipientsInput.placeholder = '请选择收件人';
+      recipientsInput.placeholder = '点击选择收件人';
+      // 隐藏清空按钮
+      if (clearBtn) clearBtn.style.display = 'none';
     } else {
-      recipientsInput.value = `已选择 ${selectedRecipients.length} 位联系人`;
+      // 按邮箱去重，统计唯一收件人数量
+      const uniqueEmails = new Set(selectedRecipients.map(r => r.email));
+      const totalUnique = uniqueEmails.size;
+      
+      // 统计联系人和客户数量
+      const contactCount = selectedRecipients.filter(r => r.type === 'contacts').length;
+      const customerCount = selectedRecipients.filter(r => r.type === 'customers').length;
+      
+      const parts = [];
+      if (contactCount > 0) parts.push(`${contactCount}位联系人`);
+      if (customerCount > 0) parts.push(`${customerCount}位客户`);
+      
+      recipientsInput.value = `已选择 ${parts.join('、')}（共${totalUnique}个邮箱）`;
+      
+      // 显示清空按钮
+      if (clearBtn) clearBtn.style.display = 'inline-block';
     }
   }
+}
+
+// 清空所有收件人
+function clearAllRecipients() {
+  if (selectedRecipients.length > 0 && !confirm('确定要清空所有已选择的收件人吗？')) {
+    return;
+  }
+  selectedRecipients = [];
+  updateRecipientDisplay();
+  console.log('🗑️ 已清空所有收件人');
+  showSuccess('收件人已清空');
 }
 
 // 加载模板列表
@@ -311,6 +397,18 @@ async function loadTemplates() {
   try {
     const response = await axios.get('/api/email-templates/');
     currentTemplates = response.data.templates || [];
+    
+    // 填充模板下拉选择器
+    const templateSelect = document.getElementById('templateSelect');
+    if (templateSelect) {
+      templateSelect.innerHTML = '<option value="">选择模板</option>';
+      currentTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.title;
+        templateSelect.appendChild(option);
+      });
+    }
     
     if (currentTemplates.length === 0) {
       $('#templateList').html(`
@@ -416,7 +514,17 @@ function createNewTemplate() {
                   </div>
                   
                   <div class="mb-3">
-                    <label class="form-label">模板内容</label>
+                    <label class="form-label d-flex justify-content-between align-items-center">
+                      <span>模板内容</span>
+                      <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="aiEnrichTemplate()" title="AI智能生成：草稿优化或生成回复邮件">
+                          <i class="bi bi-stars"></i> AI智能生成
+                        </button>
+                        <button type="button" class="btn btn-outline-info" onclick="translateTemplate()" title="翻译模板">
+                          <i class="bi bi-translate"></i> 翻译
+                        </button>
+                      </div>
+                    </label>
                     <textarea class="form-control" id="newTemplateContent" rows="12" placeholder="请输入模板内容，可以使用右侧的个性化变量"></textarea>
                   </div>
                 </div>
@@ -554,13 +662,28 @@ async function saveNewTemplate() {
 // 加载模板到编辑器
 function loadTemplate() {
   const templateId = $('#templateSelect').val();
-  if (!templateId) return;
+  
+  if (!templateId) {
+    // 清空选择时
+    $('#emailSubject').val('');
+    $('#emailContent').val('');
+    currentTemplate = null;
+    selectedRecipients = [];
+    updateRecipientDisplay();
+    console.log('🗑️ 已清空模板和收件人');
+    return;
+  }
   
   const template = currentTemplates.find(t => t.id == templateId);
   if (template) {
     $('#emailSubject').val(template.title);
     $('#emailContent').val(template.content);
     currentTemplate = template;
+    
+    // 切换模板时清空收件人选择
+    selectedRecipients = [];
+    updateRecipientDisplay();
+    console.log('📧 已加载模板:', template.title, '- 收件人已清空');
   }
 }
 
@@ -619,21 +742,64 @@ function insertText(text) {
 }
 
 // 选择收件人
+// 全局变量
+let currentRecipientType = 'contacts';  // contacts 或 customers
+let allRecipients = [];  // 所有收件人数据
+let filteredRecipients = [];  // 过滤后的收件人数据
+
 function selectRecipients() {
   console.log('✅ 选择收件人');
   const modal = new bootstrap.Modal(document.getElementById('recipientSelectModal'));
   modal.show();
-  loadContactsForSelection();
+  
+  // 默认加载联系人
+  currentRecipientType = 'contacts';
+  document.getElementById('btnContacts').classList.add('active');
+  document.getElementById('btnCustomers').classList.remove('active');
+  document.getElementById('recipientSearch').value = '';
+  
+  loadRecipientsForSelection();
 }
 
-// 加载联系人用于选择
-async function loadContactsForSelection() {
+// 切换收件人类型
+function switchRecipientType(type) {
+  console.log('🔄 切换收件人类型:', type);
+  currentRecipientType = type;
+  
+  // 更新按钮状态
+  document.getElementById('btnContacts').classList.toggle('active', type === 'contacts');
+  document.getElementById('btnCustomers').classList.toggle('active', type === 'customers');
+  
+  // 更新标题
+  document.getElementById('recipientListTitle').textContent = type === 'contacts' ? '联系人列表' : '客户列表';
+  
+  // 清空搜索框
+  document.getElementById('recipientSearch').value = '';
+  
+  // 加载数据（会自动同步显示相同邮箱的选中状态）
+  loadRecipientsForSelection();
+  
+  console.log('📋 当前已选收件人邮箱:', selectedRecipients.map(r => r.email).join(', '));
+}
+
+// 加载收件人列表（统一接口）
+async function loadRecipientsForSelection() {
   try {
-    console.log('🔄 加载联系人列表...');
+    console.log('🔄 加载收件人列表，类型:', currentRecipientType);
+    
+    // 显示加载状态
+    document.getElementById('recipientList').innerHTML = `
+      <div class="text-center p-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    `;
     
     const token = localStorage.getItem('authToken');
+    const endpoint = currentRecipientType === 'contacts' ? '/api/contacts/?pageSize=1000' : '/api/customers?page_size=1000';
     
-    const response = await fetch('/api/contacts/?pageSize=100', {
+    const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -642,69 +808,134 @@ async function loadContactsForSelection() {
     });
     
     const data = await response.json();
-    console.log('📥 联系人数据:', data);
+    console.log('📥 收件人数据:', data);
     
     if (!data.success) {
-      showError('加载联系人失败: ' + (data.message || '未知错误'));
+      showError('加载失败: ' + (data.message || '未知错误'));
       return;
     }
     
-    const contacts = data.contacts || [];
-    window.allContacts = contacts;  // 保存到全局变量
+    // 统一数据格式
+    allRecipients = currentRecipientType === 'contacts' ? (data.contacts || []) : (data.customers || []);
+    filteredRecipients = allRecipients;
     
-    let html = '';
-    contacts.forEach(contact => {
-      const isSelected = selectedRecipients.some(r => r.id === contact.id);
-      html += `
-        <div class="contact-item d-flex align-items-center p-2 border-bottom">
-          <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
-                 value="${contact.id}" 
-                 data-contact-name="${contact.name}"
-                 data-contact-email="${contact.email}"
-                 data-contact-company="${contact.company || ''}"
-                 ${isSelected ? 'checked' : ''} 
-                 onchange="toggleRecipient(${contact.id}, this.checked)">
-          <div class="flex-grow-1">
-            <div class="fw-bold">${contact.name}</div>
-            <small class="text-muted">${contact.email} • ${contact.company || '未知公司'}</small>
-          </div>
-          <div class="tags">
-            <span class="badge bg-secondary">潜在客户</span>
-          </div>
-        </div>
-      `;
-    });
+    renderRecipientList(filteredRecipients);
     
-    const contactList = document.getElementById('contactList');
-    if (contactList) {
-      contactList.innerHTML = html;
-    }
-    
-    updateSelectedCount();
-    
-    console.log(`✅ 加载了 ${contacts.length} 个联系人`);
+    console.log(`✅ 加载了 ${allRecipients.length} 个${currentRecipientType === 'contacts' ? '联系人' : '客户'}`);
   } catch (error) {
-    console.error('❌ 加载联系人失败:', error);
-    showError('加载联系人失败: ' + error.message);
+    console.error('❌ 加载失败:', error);
+    showError('加载失败: ' + error.message);
+    document.getElementById('recipientList').innerHTML = `
+      <div class="alert alert-danger m-3">加载失败，请重试</div>
+    `;
   }
 }
 
-// 切换收件人选择
-function toggleRecipient(contactId, isSelected) {
-  console.log('✅ 切换收件人:', contactId, isSelected);
+// 渲染收件人列表
+function renderRecipientList(recipients) {
+  if (recipients.length === 0) {
+    document.getElementById('recipientList').innerHTML = `
+      <div class="alert alert-info m-3">暂无数据</div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  recipients.forEach(recipient => {
+    // 检查是否已选中（通过邮箱匹配，不限类型）
+    const isSelected = selectedRecipients.some(r => r.email === recipient.email);
+    html += `
+      <div class="recipient-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer;" onclick="toggleRecipientCheckbox(${recipient.id})">
+        <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
+               value="${recipient.id}" 
+               data-type="${currentRecipientType}"
+               data-name="${recipient.name}"
+               data-email="${recipient.email}"
+               data-company="${recipient.company || ''}"
+               ${isSelected ? 'checked' : ''} 
+               onclick="event.stopPropagation(); toggleRecipient(${recipient.id}, this.checked)">
+        <div class="flex-grow-1">
+          <div class="fw-bold">${recipient.name}</div>
+          <small class="text-muted">${recipient.email}${recipient.company ? ' • ' + recipient.company : ''}</small>
+        </div>
+        <span class="badge ${currentRecipientType === 'contacts' ? 'bg-info' : 'bg-success'}">${currentRecipientType === 'contacts' ? '联系人' : '客户'}</span>
+      </div>
+    `;
+  });
+  
+  document.getElementById('recipientList').innerHTML = html;
+  updateSelectedCount();
+}
+
+// 切换checkbox（点击整行时）
+function toggleRecipientCheckbox(recipientId) {
+  const checkbox = document.querySelector(`.recipient-checkbox[value="${recipientId}"]`);
+  if (checkbox) {
+    checkbox.checked = !checkbox.checked;
+    toggleRecipient(recipientId, checkbox.checked);
+  }
+}
+
+// 搜索收件人
+function searchRecipients() {
+  const searchTerm = document.getElementById('recipientSearch').value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    filteredRecipients = allRecipients;
+  } else {
+    filteredRecipients = allRecipients.filter(recipient => {
+      const name = (recipient.name || '').toLowerCase();
+      const email = (recipient.email || '').toLowerCase();
+      const company = (recipient.company || '').toLowerCase();
+      const domain = (recipient.domain || '').toLowerCase();
+      
+      return name.includes(searchTerm) || 
+             email.includes(searchTerm) || 
+             company.includes(searchTerm) || 
+             domain.includes(searchTerm);
+    });
+  }
+  
+  console.log(`🔍 搜索 "${searchTerm}"，找到 ${filteredRecipients.length} 个结果`);
+  renderRecipientList(filteredRecipients);
+}
+
+// 切换收件人选择（按邮箱同步）
+function toggleRecipient(recipientId, isSelected) {
+  const recipient = allRecipients.find(r => r.id === recipientId);
+  if (!recipient) return;
+  
+  const recipientEmail = recipient.email;
+  console.log('✅ 切换收件人:', recipient.name, recipientEmail, '选中:', isSelected);
   
   if (isSelected) {
-    // 添加到选中列表
-    const contact = window.allContacts.find(c => c.id === contactId);
-    if (contact && !selectedRecipients.some(r => r.id === contactId)) {
-      selectedRecipients.push(contact);
-      console.log('➕ 添加收件人:', contact.name);
+    // 检查是否已经有相同邮箱的人被选中
+    const existingSameEmail = selectedRecipients.find(r => r.email === recipientEmail);
+    
+    if (!existingSameEmail) {
+      // 如果没有相同邮箱，添加当前收件人
+      const recipientWithType = { ...recipient, type: currentRecipientType };
+      selectedRecipients.push(recipientWithType);
+      console.log('➕ 添加收件人:', recipient.name, '邮箱:', recipientEmail, '类型:', currentRecipientType);
+    } else {
+      // 如果已有相同邮箱，检查是否是当前类型
+      if (existingSameEmail.type !== currentRecipientType) {
+        // 不同类型，也添加（同一邮箱可能既是联系人又是客户）
+        const recipientWithType = { ...recipient, type: currentRecipientType };
+        selectedRecipients.push(recipientWithType);
+        console.log('➕ 添加收件人（同邮箱不同类型）:', recipient.name, '类型:', currentRecipientType);
+      } else {
+        console.log('⚠️ 该收件人已在列表中');
+      }
     }
   } else {
-    // 从选中列表移除
+    // 取消选中：移除所有相同邮箱的收件人（包括联系人和客户）
     const beforeLength = selectedRecipients.length;
-    selectedRecipients = selectedRecipients.filter(r => r.id !== contactId);
-    console.log('➖ 移除收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+    selectedRecipients = selectedRecipients.filter(r => r.email !== recipientEmail);
+    console.log('➖ 移除邮箱为', recipientEmail, '的所有收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+    
+    // 刷新列表以同步其他类型的checkbox状态
+    renderRecipientList(filteredRecipients);
   }
   
   updateSelectedCount();
@@ -713,31 +944,34 @@ function toggleRecipient(contactId, isSelected) {
 // 更新选中数量
 function updateSelectedCount() {
   const count = selectedRecipients.length;
-  const countElement = document.getElementById('selectedContactsCount');
+  const countElement = document.getElementById('selectedRecipientsCount');
   if (countElement) {
     countElement.textContent = `已选择 ${count} 人`;
   }
   console.log('📊 当前选中数量:', count);
 }
 
-// 全选联系人
-function selectAllContacts() {
-  const checkboxes = document.querySelectorAll('.recipient-checkbox');
-  checkboxes.forEach(cb => {
-    cb.checked = true;
-    toggleRecipient(parseInt(cb.value), true);
+// 全选收件人
+function selectAllRecipients() {
+  filteredRecipients.forEach(recipient => {
+    // 检查是否已选中（通过邮箱）
+    if (!selectedRecipients.some(r => r.email === recipient.email)) {
+      const recipientWithType = { ...recipient, type: currentRecipientType };
+      selectedRecipients.push(recipientWithType);
+    }
   });
+  
+  // 刷新列表显示
+  renderRecipientList(filteredRecipients);
+  console.log('✅ 全选完成，共选中:', selectedRecipients.length);
 }
 
-// 清空选择
+// 清空选择（清空所有，不分类型）
 function clearSelection() {
-  const checkboxes = document.querySelectorAll('.recipient-checkbox');
-  checkboxes.forEach(cb => {
-    cb.checked = false;
-  });
   selectedRecipients = [];
+  renderRecipientList(filteredRecipients);
   updateSelectedCount();
-  updateRecipientDisplay();
+  console.log('🗑️ 已清空所有选择');
 }
 
 // 确认收件人
@@ -801,16 +1035,24 @@ async function previewEmail() {
     console.log('选中的收件人:', selectedRecipients);
     console.log('当前模板ID:', currentTemplate);
     
+    // 分离联系人和客户ID
+    const contactIds = selectedRecipients.filter(r => r.type === 'contacts').map(r => r.id);
+    const customerIds = selectedRecipients.filter(r => r.type === 'customers').map(r => r.id);
+    
+    console.log('📋 联系人ID:', contactIds);
+    console.log('📋 客户ID:', customerIds);
+    
     // 构建请求体
     const requestBody = {
-      contact_ids: selectedRecipients.map(r => r.id),
+      contact_ids: contactIds,
+      customer_ids: customerIds,
       template_title: subject,
       template_content: content
     };
     
     // 如果选择了模板，则添加 template_id
     if (currentTemplate) {
-      requestBody.template_id = currentTemplate;
+      requestBody.template_id = currentTemplate.id || currentTemplate;
     }
     
     console.log('📤 请求体:', requestBody);
@@ -1075,6 +1317,12 @@ function editTemplate(id) {
     $('#templateSelect').val(id);
     $('#emailSubject').val(template.title);
     $('#emailContent').val(template.content);
+    
+    // 切换模板时清空收件人选择
+    selectedRecipients = [];
+    updateRecipientDisplay();
+    console.log('📧 已加载模板:', template.title, '- 收件人已清空');
+    
     $('#addTemplateModal').modal('show');
   }
 }
@@ -1135,8 +1383,257 @@ function hideLoading() {
   }
 }
 
-function showToast(message, type) {
-  console.log(`${type}: ${message}`);
-  showToast(message, 'info');
+// showToast 函数已在 main.js 中定义，这里不需要重复定义
+// function showToast(message, type) {
+//   console.log(`${type}: ${message}`);
+//   showToast(message, 'info');
+// }
+
+// ==================== AI辅助功能（模板） ====================
+
+// 启动动态省略号动画
+function startLoadingDots() {
+  let dotCount = 1;
+  loadingDotsInterval = setInterval(() => {
+    const dotsElement = document.querySelector('.loading-dots');
+    if (dotsElement) {
+      dotCount = (dotCount % 3) + 1;
+      dotsElement.textContent = '.'.repeat(dotCount);
+    }
+  }, 500);
+}
+
+// 停止动态省略号动画
+function stopLoadingDots() {
+  if (loadingDotsInterval) {
+    clearInterval(loadingDotsInterval);
+    loadingDotsInterval = null;
+  }
+}
+
+// AI生成模板
+async function aiEnrichTemplate() {
+  const title = document.getElementById('newTemplateTitle').value.trim();
+  const content = document.getElementById('newTemplateContent').value.trim();
+  
+  if (!title && !content) {
+    showWarning('请先输入模板标题或内容');
+    return;
+  }
+  
+  try {
+    // 显示模态框和加载状态
+    const modal = new bootstrap.Modal(document.getElementById('aiTemplatePreviewModal'));
+    document.getElementById('aiTemplateModalTitle').innerHTML = '<i class="bi bi-stars"></i> AI智能生成';
+    document.querySelector('#aiTemplatePreviewModal .modal-header').className = 'modal-header bg-gradient-primary text-white';
+    document.getElementById('aiTemplateModalBody').innerHTML = `
+      <div class="text-center p-5">
+        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+        <p class="loading-text">AI分析中<span class="loading-dots">.</span></p>
+        <small class="text-muted d-block mt-2">正在识别内容类型并生成邮件...</small>
+      </div>
+    `;
+    document.getElementById('aiTemplateModalFooter').style.display = 'none';
+    modal.show();
+    
+    // 启动省略号动画
+    startLoadingDots();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'enrich'
+      })
+    });
+    
+    const data = await response.json();
+    
+    // 停止省略号动画
+    stopLoadingDots();
+    
+    if (!data.success) {
+      showError('AI生成失败: ' + data.message);
+      modal.hide();
+      return;
+    }
+    
+    // 保存AI生成的结果
+    aiGeneratedTemplateTitle = data.result.title;
+    aiGeneratedTemplateContent = data.result.content;
+    
+    // 显示结果
+    document.getElementById('aiTemplateModalBody').innerHTML = `
+      <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle"></i> 
+        <strong>提示：</strong>AI已智能分析您的内容，${aiGeneratedTemplateTitle.includes('Re:') || aiGeneratedTemplateTitle.includes('回复') ? '生成了回复邮件' : '优化了邮件内容'}
+      </div>
+      <div class="mb-4">
+        <div class="ai-preview-label">
+          <i class="bi bi-envelope"></i> 生成的标题
+        </div>
+        <div class="ai-preview-content">${aiGeneratedTemplateTitle}</div>
+      </div>
+      <div class="mb-3">
+        <div class="ai-preview-label">
+          <i class="bi bi-file-text"></i> 生成的内容
+        </div>
+        <div class="ai-preview-content">${aiGeneratedTemplateContent}</div>
+      </div>
+    `;
+    document.getElementById('aiTemplateModalFooter').style.display = 'flex';
+    
+  } catch (error) {
+    console.error('AI生成失败:', error);
+    stopLoadingDots();
+    showError('AI生成失败: ' + error.message);
+    bootstrap.Modal.getInstance(document.getElementById('aiTemplatePreviewModal'))?.hide();
+  }
+}
+
+// 翻译模板
+async function translateTemplate(targetLanguage = null) {
+  const title = document.getElementById('newTemplateTitle').value.trim();
+  const content = document.getElementById('newTemplateContent').value.trim();
+  
+  if (!title && !content) {
+    showWarning('请先输入模板标题或内容');
+    return;
+  }
+  
+  try {
+    // 显示模态框和加载状态
+    const modal = new bootstrap.Modal(document.getElementById('aiTemplatePreviewModal'));
+    document.getElementById('aiTemplateModalTitle').innerHTML = '<i class="bi bi-translate"></i> 翻译';
+    document.querySelector('#aiTemplatePreviewModal .modal-header').className = 'modal-header bg-gradient-info text-white';
+    document.getElementById('aiTemplateModalBody').innerHTML = `
+      <div class="text-center p-5">
+        <div class="spinner-border text-info mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+        <p class="loading-text">翻译中<span class="loading-dots">.</span></p>
+      </div>
+    `;
+    document.getElementById('aiTemplateModalFooter').style.display = 'none';
+    modal.show();
+    
+    // 启动省略号动画
+    startLoadingDots();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'translate',
+        target_language: targetLanguage
+      })
+    });
+    
+    const data = await response.json();
+    
+    // 停止省略号动画
+    stopLoadingDots();
+    
+    if (!data.success) {
+      showError('翻译失败: ' + data.message);
+      modal.hide();
+      return;
+    }
+    
+    // 保存翻译结果
+    aiGeneratedTemplateTitle = data.result.title;
+    aiGeneratedTemplateContent = data.result.content;
+    
+    // 显示结果
+    const langInfo = data.result.detected_language && data.result.target_language 
+      ? ` (${data.result.detected_language} → ${data.result.target_language})`
+      : '';
+    
+    document.getElementById('aiTemplateModalTitle').innerHTML = `<i class="bi bi-translate"></i> 翻译结果${langInfo}`;
+    document.getElementById('aiTemplateModalBody').innerHTML = `
+      <div class="mb-4">
+        <div class="ai-preview-label">
+          <i class="bi bi-envelope"></i> 翻译后的标题
+        </div>
+        <div class="ai-preview-content">${aiGeneratedTemplateTitle}</div>
+      </div>
+      <div class="mb-3">
+        <div class="ai-preview-label">
+          <i class="bi bi-file-text"></i> 翻译后的内容
+        </div>
+        <div class="ai-preview-content">${aiGeneratedTemplateContent}</div>
+      </div>
+    `;
+    document.getElementById('aiTemplateModalFooter').style.display = 'flex';
+    
+  } catch (error) {
+    console.error('翻译失败:', error);
+    stopLoadingDots();
+    showError('翻译失败: ' + error.message);
+    bootstrap.Modal.getInstance(document.getElementById('aiTemplatePreviewModal'))?.hide();
+  }
+}
+
+// 应用AI生成的模板结果
+function applyTemplateAIResult() {
+  console.log('✅ 点击替换原内容按钮');
+  console.log('标题:', aiGeneratedTemplateTitle);
+  console.log('内容:', aiGeneratedTemplateContent);
+  
+  if (!aiGeneratedTemplateContent && !aiGeneratedTemplateTitle) {
+    console.warn('⚠️ 没有可应用的内容');
+    alert('没有可应用的内容');
+    return;
+  }
+  
+  // 获取表单元素
+  const titleElement = document.getElementById('newTemplateTitle');
+  const contentElement = document.getElementById('newTemplateContent');
+  
+  console.log('表单元素:', titleElement, contentElement);
+  
+  if (!titleElement || !contentElement) {
+    console.error('❌ 找不到表单元素');
+    alert('找不到表单元素，请刷新页面重试');
+    return;
+  }
+  
+  // 直接替换内容（不需要延迟）
+  titleElement.value = aiGeneratedTemplateTitle || titleElement.value;
+  contentElement.value = aiGeneratedTemplateContent || contentElement.value;
+  
+  console.log('✅ 内容已替换');
+  
+  // 显示成功提示
+  if (typeof showSuccess === 'function') {
+    showSuccess('模板内容已替换');
+  } else {
+    alert('模板内容已替换！');
+  }
+  
+  // 关闭模态框
+  const modal = bootstrap.Modal.getInstance(document.getElementById('aiTemplatePreviewModal'));
+  if (modal) {
+    console.log('✅ 关闭AI预览模态框');
+    modal.hide();
+  }
+  
+  // 清空数据
+  aiGeneratedTemplateTitle = '';
+  aiGeneratedTemplateContent = '';
+  
+  console.log('✅ 替换完成');
 }
 </script>
+
+

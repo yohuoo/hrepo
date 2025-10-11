@@ -275,7 +275,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 10000;
 }
 
 .spinner-border-lg {
@@ -365,6 +365,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.5;
 }
 
 .email-item .email-time {
@@ -841,14 +843,14 @@ body {
 
 /* ==================== 下拉菜单修复 ==================== */
 .dropdown-menu {
-  z-index: 9999 !important;
+  z-index: 1100 !important;
   position: absolute !important;
 }
 
 /* 特殊处理：表格中的下拉菜单 */
 .table .dropdown-menu {
   position: fixed !important;
-  z-index: 9999 !important;
+  z-index: 1100 !important;
 }
 
 /* 不要限制表格容器的overflow */
@@ -960,7 +962,7 @@ body {
   position: fixed;
   top: 80px;
   right: 20px;
-  z-index: 9999;
+  z-index: 10001;
   width: 350px;
   max-width: 90vw;
 }
@@ -1181,4 +1183,23 @@ body {
 .markdown-content hr {
   margin: 1.5rem 0;
   border-top: 1px solid #dee2e6;
+}
+
+/* ==================== 模态框层级修复 ==================== */
+/* 确保模态框及其背景在所有元素之上 */
+.modal-backdrop {
+  z-index: 9990 !important;
+}
+
+.modal {
+  z-index: 9995 !important;
+}
+
+/* 特殊处理AI模态框，确保它在最上层 */
+#aiTemplatePreviewModal {
+  z-index: 9999 !important;
+}
+
+#aiTemplatePreviewModal .modal-backdrop {
+  z-index: 9998 !important;
 }

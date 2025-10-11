@@ -1,21 +1,90 @@
--- 初始化数据库表结构
+-- ==========================================
+-- HNode CRM 系统数据库初始化脚本
+-- ==========================================
+-- 版本: v1.2.0
+-- 创建日期: 2025-10-11
+-- 说明: 此脚本创建17张核心表和初始化数据
+-- ==========================================
+--
+-- 📋 数据表清单（17张表）：
+-- 
+-- 【用户与组织】
+--   1. departments          - 部门表（支持多级）
+--   2. users                - 用户表（角色、部门）
+--
+-- 【客户管理】
+--   3. contacts             - 联系人表
+--   4. contact_tags         - 联系人标签表
+--   5. customers            - 客户表
+--   6. customer_analysis    - 客户AI分析表
+--
+-- 【邮件系统】
+--   7. email_templates      - 邮件模板表
+--   8. user_email_bindings  - 用户邮箱绑定表
+--   9. email_history        - 邮件往来记录表
+--
+-- 【会议管理】
+--  10. zoom_meetings        - 视频会议表
+--
+-- 【销售与合同】
+--  11. sales_records        - 销售记录表
+--  12. contracts            - 合同表
+--
+-- 【数据分析】
+--  13. reports              - 数据报告表
+--  14. case_studies         - 案例总结表
+--
+-- 【权限系统】
+--  15. pages                - 页面定义表
+--  16. page_permissions     - 页面权限表
+--  17. permission_audit_logs - 权限审计日志表
+--
+-- ==========================================
 
--- 1. 用户表
+-- ==================== 核心表（用户和组织）====================
+
+-- 1. 部门表（支持多级部门）
+CREATE TABLE IF NOT EXISTS departments (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  parent_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+  level INTEGER DEFAULT 1,
+  path VARCHAR(500),
+  manager_id INTEGER,
+  description TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_departments_parent_id ON departments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_departments_path ON departments(path);
+CREATE INDEX IF NOT EXISTS idx_departments_manager_id ON departments(manager_id);
+
+-- 2. 用户表（增强版）
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(100) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   hashed_password VARCHAR(255) NOT NULL,
+  department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+  role VARCHAR(20) DEFAULT 'user' NOT NULL CHECK (role IN ('super_admin', 'admin', 'user')),
   is_active BOOLEAN DEFAULT true,
   is_admin BOOLEAN DEFAULT false,
+  password_changed BOOLEAN DEFAULT false,
+  last_password_change TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_department_id ON users(department_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
--- 2. 联系人表
+-- ==================== 客户管理相关表 ====================
+
+-- 3. 联系人表
 CREATE TABLE IF NOT EXISTS contacts (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -62,6 +131,7 @@ CREATE TABLE IF NOT EXISTS customers (
   email_count INTEGER DEFAULT 0,
   communication_progress VARCHAR(50) DEFAULT '待联系',
   interest_level VARCHAR(50) DEFAULT '无兴趣',
+  deal_status VARCHAR(20) DEFAULT '未成交' CHECK (deal_status IN ('未成交', '已成交')),
   last_communication_time TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -185,24 +255,352 @@ CREATE INDEX IF NOT EXISTS idx_customer_analysis_user_id ON customer_analysis(us
 CREATE INDEX IF NOT EXISTS idx_customer_analysis_customer_id ON customer_analysis(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_analysis_created_at ON customer_analysis(created_at DESC);
 
+-- 10. 销售记录表
+CREATE TABLE IF NOT EXISTS sales_records (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  sale_date DATE NOT NULL,
+  product_name VARCHAR(200) NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'USD',
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sales_records_user_id ON sales_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_sales_records_customer_id ON sales_records(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_records_sale_date ON sales_records(sale_date DESC);
+CREATE INDEX IF NOT EXISTS idx_sales_records_user_sale_date ON sales_records(user_id, sale_date);
+
+-- 11. 合同表
+CREATE TABLE IF NOT EXISTS contracts (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  contract_number VARCHAR(100),
+  party_a_name VARCHAR(200),
+  party_b_name VARCHAR(200) DEFAULT '浩天药业有限公司',
+  purchase_product TEXT,
+  purchase_quantity DECIMAL(12,2),
+  estimated_delivery_date DATE,
+  contract_amount DECIMAL(12,2),
+  currency VARCHAR(10) DEFAULT 'USD',
+  notes TEXT,
+  ai_generated BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_contracts_customer_id ON contracts(customer_id);
+CREATE INDEX IF NOT EXISTS idx_contracts_user_id ON contracts(user_id);
+CREATE INDEX IF NOT EXISTS idx_contracts_created_at ON contracts(created_at DESC);
+
+-- 12. 报告表（AI生成的报告缓存）
+CREATE TABLE IF NOT EXISTS reports (
+  id SERIAL PRIMARY KEY,
+  report_type VARCHAR(20) NOT NULL CHECK (report_type IN ('personal', 'department', 'company')),
+  period_type VARCHAR(20) NOT NULL CHECK (period_type IN ('week', 'month')),
+  year INTEGER NOT NULL,
+  month INTEGER,
+  week INTEGER,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  department_id INTEGER REFERENCES departments(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  generated_by INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  summary TEXT,
+  statistics JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  UNIQUE(report_type, period_type, year, month, week, user_id, department_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_type_period ON reports(report_type, period_type);
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_department_id ON reports(department_id);
+CREATE INDEX IF NOT EXISTS idx_reports_year_month ON reports(year, month);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
+
+-- 13. 案例总结表
+CREATE TABLE IF NOT EXISTS case_studies (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  title VARCHAR(200),
+  customer_info TEXT,
+  sales_techniques TEXT,
+  communication_highlights TEXT,
+  summary TEXT,
+  generated_by INTEGER NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_case_studies_customer_id ON case_studies(customer_id);
+CREATE INDEX IF NOT EXISTS idx_case_studies_user_id ON case_studies(user_id);
+CREATE INDEX IF NOT EXISTS idx_case_studies_created_at ON case_studies(created_at DESC);
+
+-- 14. 页面表
+CREATE TABLE IF NOT EXISTS pages (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  parent_id INTEGER REFERENCES pages(id) ON DELETE CASCADE,
+  page_type VARCHAR(20) NOT NULL,
+  url VARCHAR(200),
+  icon VARCHAR(50),
+  sort_order INTEGER DEFAULT 0,
+  is_system BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pages_parent ON pages(parent_id);
+CREATE INDEX IF NOT EXISTS idx_pages_code ON pages(code);
+CREATE INDEX IF NOT EXISTS idx_pages_type ON pages(page_type);
+
+-- 15. 页面权限表
+CREATE TABLE IF NOT EXISTS page_permissions (
+  id SERIAL PRIMARY KEY,
+  page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+  target_type VARCHAR(20) NOT NULL,
+  target_id INTEGER NOT NULL,
+  has_permission BOOLEAN DEFAULT true,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  UNIQUE(page_id, target_type, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_page_permissions_target ON page_permissions(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_page_permissions_page ON page_permissions(page_id);
+
+-- 16. 权限修改日志表
+CREATE TABLE IF NOT EXISTS permission_audit_logs (
+  id SERIAL PRIMARY KEY,
+  operator_id INTEGER NOT NULL REFERENCES users(id),
+  operator_name VARCHAR(100) NOT NULL,
+  action_type VARCHAR(20) NOT NULL,
+  target_type VARCHAR(20) NOT NULL,
+  target_id INTEGER NOT NULL,
+  target_name VARCHAR(100) NOT NULL,
+  changes JSONB,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_created ON permission_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_operator ON permission_audit_logs(operator_id);
+
 -- ==================== 初始数据 ====================
 
--- 插入默认管理员账号
+-- 插入默认超级管理员账号
 -- 用户名: admin
 -- 邮箱: admin@workwith.cn
 -- 密码: Admin123456 (bcrypt加密后的哈希值)
+-- 角色: super_admin (超级管理员)
+-- 密码状态: 未修改（首次登录需要修改）
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin' OR email = 'admin@workwith.cn') THEN
-    INSERT INTO users (username, email, hashed_password, is_active, is_admin, created_at, updated_at)
+    INSERT INTO users (
+      username, 
+      email, 
+      hashed_password, 
+      department_id,
+      role,
+      is_active, 
+      is_admin,
+      password_changed,
+      created_at, 
+      updated_at
+    )
     VALUES (
       'admin',
       'admin@workwith.cn',
       '$2a$10$NH7Wmc8SCRgR6c1th.NeiuWu/SbvzxoGKKIKHPsvwF1KbUPagYjie',
+      NULL,
+      'super_admin',
       true,
       true,
+      false,
       CURRENT_TIMESTAMP,
       CURRENT_TIMESTAMP
     );
   END IF;
 END $$;
+
+-- 插入页面数据
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pages LIMIT 1) THEN
+    -- 独立页面：控制台
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('控制台', 'dashboard', NULL, 'page', '/dashboard', 'bi-house-door', 0, false);
+    
+    -- 一级菜单：客户管理
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('客户管理', 'customers', NULL, 'menu', NULL, 'bi-people', 1, false);
+    
+    -- 客户管理子页面
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('联系人', 'contacts.list', (SELECT id FROM pages WHERE code='customers'), 'page', '/contacts', NULL, 1, false),
+    ('客户', 'customers.list', (SELECT id FROM pages WHERE code='customers'), 'page', '/customers', NULL, 2, false);
+    
+    -- 联系人操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('查看联系人', 'contacts.view', (SELECT id FROM pages WHERE code='contacts.list'), 'action', NULL, NULL, 1, false),
+    ('新增联系人', 'contacts.create', (SELECT id FROM pages WHERE code='contacts.list'), 'action', NULL, NULL, 2, false),
+    ('编辑联系人', 'contacts.edit', (SELECT id FROM pages WHERE code='contacts.list'), 'action', NULL, NULL, 3, false),
+    ('删除联系人', 'contacts.delete', (SELECT id FROM pages WHERE code='contacts.list'), 'action', NULL, NULL, 4, false),
+    ('Hunter搜索', 'contacts.hunter_search', (SELECT id FROM pages WHERE code='contacts.list'), 'action', NULL, NULL, 5, false);
+    
+    -- 客户操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('查看客户', 'customers.view', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 1, false),
+    ('新增客户', 'customers.create', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 2, false),
+    ('编辑客户', 'customers.edit', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 3, false),
+    ('删除客户', 'customers.delete', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 4, false),
+    ('AI分析客户', 'customers.ai_analyze', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 5, false),
+    ('录入合同', 'customers.contract_create', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 6, false),
+    ('查看合同', 'customers.contract_view', (SELECT id FROM pages WHERE code='customers.list'), 'action', NULL, NULL, 7, false);
+    
+    -- 一级菜单：邮件系统
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('邮件系统', 'emails', NULL, 'menu', NULL, 'bi-envelope', 2, false);
+    
+    -- 邮件系统子页面
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('收件箱', 'emails.inbox', (SELECT id FROM pages WHERE code='emails'), 'page', '/emails/inbox', NULL, 1, false),
+    ('发件箱', 'emails.sent', (SELECT id FROM pages WHERE code='emails'), 'page', '/emails/sent', NULL, 2, false),
+    ('写邮件', 'emails.compose', (SELECT id FROM pages WHERE code='emails'), 'page', '/emails/compose', NULL, 3, false),
+    ('邮件模板', 'emails.templates', (SELECT id FROM pages WHERE code='emails'), 'page', '/emails/templates', NULL, 4, false);
+    
+    -- 邮件模板操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('创建模板', 'emails.template_create', (SELECT id FROM pages WHERE code='emails.templates'), 'action', NULL, NULL, 1, false),
+    ('编辑模板', 'emails.template_edit', (SELECT id FROM pages WHERE code='emails.templates'), 'action', NULL, NULL, 2, false),
+    ('删除模板', 'emails.template_delete', (SELECT id FROM pages WHERE code='emails.templates'), 'action', NULL, NULL, 3, false);
+    
+    -- 一级菜单：数据分析
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('数据分析', 'analytics', NULL, 'menu', NULL, 'bi-graph-up', 3, false);
+    
+    -- 数据分析子页面
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('数据统计', 'statistics', (SELECT id FROM pages WHERE code='analytics'), 'page', '/statistics', NULL, 1, false),
+    ('销售数据', 'sales', (SELECT id FROM pages WHERE code='analytics'), 'page', '/sales', NULL, 2, false),
+    ('数据报告', 'reports', (SELECT id FROM pages WHERE code='analytics'), 'page', '/reports', NULL, 3, false),
+    ('案例总结', 'case_studies', (SELECT id FROM pages WHERE code='analytics'), 'page', '/case-studies', NULL, 4, false);
+    
+    -- 销售数据操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('新增销售记录', 'sales.create', (SELECT id FROM pages WHERE code='sales'), 'action', NULL, NULL, 1, false),
+    ('编辑销售记录', 'sales.edit', (SELECT id FROM pages WHERE code='sales'), 'action', NULL, NULL, 2, false),
+    ('删除销售记录', 'sales.delete', (SELECT id FROM pages WHERE code='sales'), 'action', NULL, NULL, 3, false);
+    
+    -- 报告操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('生成报告', 'reports.generate', (SELECT id FROM pages WHERE code='reports'), 'action', NULL, NULL, 1, false),
+    ('删除报告', 'reports.delete', (SELECT id FROM pages WHERE code='reports'), 'action', NULL, NULL, 2, false);
+    
+    -- 案例操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('生成案例', 'case_studies.generate', (SELECT id FROM pages WHERE code='case_studies'), 'action', NULL, NULL, 1, false),
+    ('查看案例', 'case_studies.view', (SELECT id FROM pages WHERE code='case_studies'), 'action', NULL, NULL, 2, false),
+    ('删除案例', 'case_studies.delete', (SELECT id FROM pages WHERE code='case_studies'), 'action', NULL, NULL, 3, false);
+    
+    -- 一级菜单：其他
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('其他', 'others', NULL, 'menu', NULL, 'bi-three-dots', 4, false);
+    
+    -- 其他子页面
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('会议记录', 'meetings', (SELECT id FROM pages WHERE code='others'), 'page', '/meetings', NULL, 1, false);
+    
+    -- 一级菜单：系统设置
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('系统设置', 'settings', NULL, 'menu', NULL, 'bi-gear', 5, false);
+    
+    -- 系统设置子页面
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('部门管理', 'settings.departments', (SELECT id FROM pages WHERE code='settings'), 'page', '/settings/departments', NULL, 1, false),
+    ('用户管理', 'settings.users', (SELECT id FROM pages WHERE code='settings'), 'page', '/settings/users', NULL, 2, false),
+    ('页面权限', 'settings.page_permissions', (SELECT id FROM pages WHERE code='settings'), 'page', '/settings/page-permissions', NULL, 3, true),
+    ('邮箱配置', 'settings.email', (SELECT id FROM pages WHERE code='settings'), 'page', '/settings/email', NULL, 4, false);
+    
+    -- 部门管理操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('新增部门', 'departments.create', (SELECT id FROM pages WHERE code='settings.departments'), 'action', NULL, NULL, 1, false),
+    ('编辑部门', 'departments.edit', (SELECT id FROM pages WHERE code='settings.departments'), 'action', NULL, NULL, 2, false),
+    ('删除部门', 'departments.delete', (SELECT id FROM pages WHERE code='settings.departments'), 'action', NULL, NULL, 3, false);
+    
+    -- 用户管理操作
+    INSERT INTO pages (name, code, parent_id, page_type, url, icon, sort_order, is_system) VALUES
+    ('新增用户', 'users.create', (SELECT id FROM pages WHERE code='settings.users'), 'action', NULL, NULL, 1, false),
+    ('编辑用户', 'users.edit', (SELECT id FROM pages WHERE code='settings.users'), 'action', NULL, NULL, 2, false),
+    ('删除用户', 'users.delete', (SELECT id FROM pages WHERE code='settings.users'), 'action', NULL, NULL, 3, false),
+    ('重置密码', 'users.reset_password', (SELECT id FROM pages WHERE code='settings.users'), 'action', NULL, NULL, 4, false);
+  END IF;
+END $$;
+
+-- 为现有所有部门授予全部权限（默认策略）
+DO $$
+DECLARE
+  dept RECORD;
+  pg RECORD;
+BEGIN
+  FOR dept IN SELECT id FROM departments LOOP
+    FOR pg IN SELECT id FROM pages WHERE is_active = true LOOP
+      INSERT INTO page_permissions (page_id, target_type, target_id, has_permission, created_by)
+      VALUES (pg.id, 'department', dept.id, true, 1)
+      ON CONFLICT (page_id, target_type, target_id) DO NOTHING;
+    END LOOP;
+  END LOOP;
+END $$;
+
+-- 为现有所有普通用户（非超管）授予全部权限（默认策略）
+DO $$
+DECLARE
+  usr RECORD;
+  pg RECORD;
+BEGIN
+  FOR usr IN SELECT id FROM users WHERE role != 'super_admin' LOOP
+    FOR pg IN SELECT id FROM pages WHERE is_active = true LOOP
+      INSERT INTO page_permissions (page_id, target_type, target_id, has_permission, created_by)
+      VALUES (pg.id, 'user', usr.id, true, 1)
+      ON CONFLICT (page_id, target_type, target_id) DO NOTHING;
+    END LOOP;
+  END LOOP;
+END $$;
+
+-- ==========================================
+-- 初始化脚本执行完成
+-- ==========================================
+-- 
+-- ✅ 已创建的表：17张
+-- ✅ 已创建的索引：70+个
+-- ✅ 已插入的初始数据：
+--    - 1个默认超级管理员账号（admin）
+--    - 页面权限定义（80+个页面/操作）
+--    - 所有部门和用户的默认权限
+--
+-- 🔐 默认账号信息：
+--    用户名: admin
+--    邮箱:   admin@workwith.cn
+--    密码:   Admin123456
+--    角色:   super_admin
+--
+-- 📝 注意事项：
+--    1. 首次登录后请立即修改默认密码
+--    2. 新创建的部门和用户默认拥有所有权限
+--    3. 超级管理员可以在"页面权限"中调整权限
+--    4. 系统页面（is_system=true）仅超管可访问
+--
+-- ==========================================

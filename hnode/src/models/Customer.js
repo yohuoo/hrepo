@@ -65,6 +65,10 @@ const Customer = sequelize.define('Customer', {
     type: DataTypes.ENUM('无兴趣', '低兴趣', '中等兴趣', '高兴趣'),
     defaultValue: '无兴趣'
   },
+  deal_status: {
+    type: DataTypes.STRING(20),
+    defaultValue: '未成交'
+  },
   last_communication_time: {
     type: DataTypes.DATE,
     allowNull: true

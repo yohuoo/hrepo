@@ -1,0 +1,520 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">数据报告</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">数据报告中心</h1>
+    <p class="page-subtitle">AI智能生成工作报告</p>
+  </div>
+</div>
+
+<!-- 生成报告区域 -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-robot"></i> 生成新报告</h6>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3" id="reportTypeField">
+        <label class="form-label">报告类型</label>
+        <select class="form-select" id="reportType" onchange="updateReportForm()">
+          <option value="personal">个人报告</option>
+          <!-- 部门和公司报告仅管理员可见 -->
+        </select>
+      </div>
+      <div class="col-md-3" id="departmentField" style="display: none;">
+        <label class="form-label">选择部门</label>
+        <select class="form-select" id="reportDepartment">
+          <option value="">请选择部门</option>
+        </select>
+      </div>
+      <div class="col-md-3" id="userField" style="display: none;">
+        <label class="form-label">选择用户</label>
+        <select class="form-select" id="reportUser">
+          <option value="">请选择用户</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">周期类型</label>
+        <select class="form-select" id="periodType">
+          <option value="week">周报</option>
+          <option value="month">月报</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">年份</label>
+        <input type="number" class="form-control" id="reportYear" value="2025">
+      </div>
+      <div class="col-md-2" id="monthField">
+        <label class="form-label">月份</label>
+        <select class="form-select" id="reportMonth">
+          <option value="1">1月</option>
+          <option value="2">2月</option>
+          <option value="3">3月</option>
+          <option value="4">4月</option>
+          <option value="5">5月</option>
+          <option value="6">6月</option>
+          <option value="7">7月</option>
+          <option value="8">8月</option>
+          <option value="9">9月</option>
+          <option value="10" selected>10月</option>
+          <option value="11">11月</option>
+          <option value="12">12月</option>
+        </select>
+      </div>
+      <div class="col-md-2" id="weekField" style="display: none;">
+        <label class="form-label">周数</label>
+        <input type="number" class="form-control" id="reportWeek" min="1" max="53" value="1">
+      </div>
+      <div class="col-md-2" id="departmentField" style="display: none;">
+        <label class="form-label">选择部门</label>
+        <select class="form-select" id="targetDepartment">
+          <option value="">请选择</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary w-100" onclick="generateReport()">
+          <i class="bi bi-stars me-1"></i>生成报告
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 历史报告列表 -->
+<div class="card">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-file-earmark-bar-graph"></i> 历史报告</h6>
+  </div>
+  <div class="card-body">
+    <div class="list-group" id="reportsList">
+      <div class="text-center p-5">
+        <div class="spinner-border text-primary"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 报告详情模态框 -->
+<div class="modal fade" id="reportDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-file-text"></i> 报告详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body markdown-content" id="reportDetailBody">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-primary" onclick="downloadReport()">
+          <i class="bi bi-download"></i> 下载报告
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let departments = [];
+let allUsers = [];
+let currentReport = null;
+let currentUser = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  // 获取当前用户信息
+  currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  
+  // 如果userInfo中没有role字段，从后端重新获取
+  if (!currentUser.role) {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        currentUser = data.user;
+        localStorage.setItem('userInfo', JSON.stringify(currentUser));
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+    }
+  }
+  
+  await loadDepartments();
+  await loadUsers();
+  
+  // 根据用户角色添加报告类型选项
+  if (currentUser.role === 'super_admin' || currentUser.role === 'admin') {
+    const reportTypeSelect = document.getElementById('reportType');
+    reportTypeSelect.innerHTML += '<option value="department">部门报告</option>';
+    if (currentUser.role === 'super_admin') {
+      reportTypeSelect.innerHTML += '<option value="company">公司报告</option>';
+    }
+  }
+  
+  await loadReports();
+  
+  // 设置默认月份为当前月
+  const now = new Date();
+  document.getElementById('reportYear').value = now.getFullYear();
+  document.getElementById('reportMonth').value = now.getMonth() + 1;
+  
+  // 周期类型切换
+  document.getElementById('periodType').addEventListener('change', function() {
+    if (this.value === 'week') {
+      document.getElementById('monthField').style.display = 'none';
+      document.getElementById('weekField').style.display = 'block';
+    } else {
+      document.getElementById('monthField').style.display = 'block';
+      document.getElementById('weekField').style.display = 'none';
+    }
+  });
+});
+
+// 加载部门列表
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/departments/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      departments = data.departments || [];
+      updateDepartmentSelect();
+    }
+  } catch (error) {
+    console.error('加载部门列表失败:', error);
+  }
+}
+
+// 加载用户列表
+async function loadUsers() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/users?pageSize=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      allUsers = data.users || [];
+      updateUserSelect();
+    }
+  } catch (error) {
+    console.error('加载用户列表失败:', error);
+  }
+}
+
+// 更新用户选择框
+function updateUserSelect() {
+  const select = document.getElementById('reportUser');
+  select.innerHTML = '<option value="">请选择用户</option>';
+  allUsers.forEach(user => {
+    select.innerHTML += `<option value="${user.id}">${user.username} (${user.email})</option>`;
+  });
+}
+
+// 更新部门选择框
+function updateDepartmentSelect() {
+  const select = document.getElementById('targetDepartment');
+  select.innerHTML = '<option value="">请选择</option>';
+  
+  // 同时更新报告生成表单中的部门选择器
+  const reportDeptSelect = document.getElementById('reportDepartment');
+  reportDeptSelect.innerHTML = '<option value="">请选择部门</option>';
+  
+  function addOptions(depts, prefix = '') {
+    depts.forEach(dept => {
+      select.innerHTML += `<option value="${dept.id}">${prefix}${dept.name}</option>`;
+      reportDeptSelect.innerHTML += `<option value="${dept.id}">${prefix}${dept.name}</option>`;
+      if (dept.children && dept.children.length > 0) {
+        addOptions(dept.children, prefix + '　');
+      }
+    });
+  }
+  
+  addOptions(departments);
+}
+
+// 更新报告表单
+function updateReportForm() {
+  const reportType = document.getElementById('reportType').value;
+  const deptField = document.getElementById('departmentField');
+  const userField = document.getElementById('userField');
+  
+  // 根据报告类型显示/隐藏相应的选择器
+  if (reportType === 'department') {
+    deptField.style.display = 'block';
+    userField.style.display = 'none';
+  } else if (reportType === 'personal') {
+    deptField.style.display = 'none';
+    userField.style.display = 'block';
+  } else {
+    // 公司报告，隐藏两个选择器
+    deptField.style.display = 'none';
+    userField.style.display = 'none';
+  }
+}
+
+// 生成报告
+async function generateReport() {
+  try {
+    const reportType = document.getElementById('reportType').value;
+    const periodType = document.getElementById('periodType').value;
+    const year = document.getElementById('reportYear').value;
+    const month = document.getElementById('reportMonth').value;
+    const week = document.getElementById('reportWeek').value;
+    
+    // 获取部门或用户ID
+    let departmentId = null;
+    let userId = null;
+    
+    if (reportType === 'department') {
+      departmentId = document.getElementById('reportDepartment').value;
+      if (!departmentId) {
+        showWarning('请选择部门');
+        return;
+      }
+    } else if (reportType === 'personal') {
+      userId = document.getElementById('reportUser').value;
+      // 如果没有选择用户，则生成当前用户的报告
+    }
+    
+    const token = localStorage.getItem('authToken');
+    
+    let url = '/api/reports/';
+    if (reportType === 'personal') {
+      if (userId) {
+        url += `user/${userId}`;
+      } else {
+        url += 'personal';
+      }
+    } else if (reportType === 'department') {
+      url += `department/${departmentId}`;
+    } else {
+      url += 'company';
+    }
+    
+    showInfo('正在生成报告，请稍候...');
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        year: parseInt(year),
+        month: periodType === 'month' ? parseInt(month) : null,
+        week: periodType === 'week' ? parseInt(week) : null,
+        period_type: periodType
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '生成报告失败');
+      return;
+    }
+    
+    showSuccess('报告生成成功！');
+    await loadReports();
+    viewReport(data.report.id);
+    
+  } catch (error) {
+    console.error('生成报告失败:', error);
+    showError('生成失败: ' + error.message);
+  }
+}
+
+// 加载历史报告
+async function loadReports() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/reports?pageSize=50', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      return;
+    }
+    
+    renderReportsList(data.reports || []);
+    
+  } catch (error) {
+    console.error('加载报告列表失败:', error);
+  }
+}
+
+// 渲染报告列表
+function renderReportsList(reports) {
+  const container = document.getElementById('reportsList');
+  
+  if (reports.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state text-center p-5">
+        <i class="bi bi-file-earmark-bar-graph"></i>
+        <h5>暂无报告</h5>
+        <p class="text-muted">点击上方"生成报告"创建第一份报告</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  let hasGenerating = false;  // 是否有生成中的报告
+  
+  reports.forEach(report => {
+    const typeText = {
+      'personal': '个人报告',
+      'department': '部门报告',
+      'company': '公司报告'
+    }[report.report_type] || '未知';
+    
+    const periodText = report.period_type === 'month' 
+      ? `${report.year}年${report.month}月`
+      : `${report.year}年第${report.week}周`;
+    
+    // 判断是否生成中（summary为null或为空）
+    const isGenerating = !report.summary || report.summary.trim() === '';
+    if (isGenerating) hasGenerating = true;
+    
+    const clickAction = isGenerating ? 'return false;' : `viewReport(${report.id}); return false;`;
+    const cursorStyle = isGenerating ? 'cursor: not-allowed; opacity: 0.7;' : 'cursor: pointer;';
+    
+    html += `
+      <a href="#" class="list-group-item list-group-item-action" style="${cursorStyle}" onclick="${clickAction}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="mb-1">
+              <span class="badge bg-${report.report_type === 'company' ? 'danger' : report.report_type === 'department' ? 'warning' : 'primary'}">
+                ${typeText}
+              </span>
+              ${periodText}
+              ${isGenerating ? '<span class="badge bg-secondary ms-2"><i class="bi bi-hourglass-split"></i> 生成中...</span>' : ''}
+            </h6>
+            <p class="mb-1 text-muted small">
+              ${report.user ? `用户: ${report.user.username}` : ''}
+              ${report.department ? `部门: ${report.department.name}` : ''}
+            </p>
+            <p class="mb-0 text-muted small">
+              生成时间: ${new Date(report.created_at).toLocaleString('zh-CN')} | 
+              生成人: ${report.generator ? report.generator.username : '未知'}
+            </p>
+          </div>
+        </div>
+      </a>
+    `;
+  });
+  
+  container.innerHTML = html;
+  
+  // 如果有生成中的报告，5秒后自动刷新列表
+  if (hasGenerating) {
+    console.log('⏳ 检测到生成中的报告，5秒后自动刷新...');
+    setTimeout(() => {
+      console.log('🔄 自动刷新报告列表');
+      loadReports();
+    }, 5000);
+  }
+}
+
+// 查看报告详情
+async function viewReport(id) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/reports/${id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取报告失败');
+      return;
+    }
+    
+    currentReport = data.report;
+    
+    // 检查是否还在生成中
+    const isGenerating = !currentReport.summary || currentReport.summary.trim() === '';
+    
+    // 渲染内容
+    const body = document.getElementById('reportDetailBody');
+    if (isGenerating) {
+      // 显示生成中状态
+      body.innerHTML = `
+        <div class="text-center p-5">
+          <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+          <h5>报告生成中...</h5>
+          <p class="text-muted">AI正在分析数据并生成报告，请稍候</p>
+          <button class="btn btn-sm btn-outline-primary mt-3" onclick="viewReport(${id})">
+            <i class="bi bi-arrow-clockwise"></i> 刷新查看
+          </button>
+        </div>
+      `;
+    } else {
+      // 渲染Markdown
+      if (typeof marked !== 'undefined') {
+        body.innerHTML = marked.parse(currentReport.summary);
+      } else {
+        body.innerHTML = `<pre>${currentReport.summary}</pre>`;
+      }
+    }
+    
+    new bootstrap.Modal(document.getElementById('reportDetailModal')).show();
+    
+  } catch (error) {
+    console.error('获取报告详情失败:', error);
+    showError('获取报告失败');
+  }
+}
+
+// 下载报告
+function downloadReport() {
+  if (!currentReport) {
+    showWarning('没有可下载的报告');
+    return;
+  }
+  
+  const typeText = {
+    'personal': '个人报告',
+    'department': '部门报告',
+    'company': '公司报告'
+  }[currentReport.report_type] || '报告';
+  
+  const periodText = currentReport.period_type === 'month'
+    ? `${currentReport.year}年${currentReport.month}月`
+    : `${currentReport.year}年第${currentReport.week}周`;
+  
+  const fileName = `${typeText}_${periodText}.md`;
+  const content = currentReport.summary || '# 报告内容为空';
+  
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', fileName);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  showSuccess('报告下载成功');
+}
+</script>
+

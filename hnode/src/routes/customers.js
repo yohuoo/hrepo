@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { checkPagePermission } = require('../middleware/permission');
 const CustomerService = require('../services/CustomerService');
 
 const customerService = new CustomerService();
 
-// 获取客户列表
+// 获取客户列表（无需额外权限检查，页面访问已检查customers.list）
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const {
@@ -35,6 +36,8 @@ router.get('/', authenticateToken, async (req, res) => {
       email_count: customer.email_count,
       communication_progress: customer.communication_progress,
       interest_level: customer.interest_level,
+      deal_status: customer.deal_status,
+      contract_count: customer.contract_count,
       last_communication_time: customer.last_communication_time,
       created_at: customer.created_at,
       updated_at: customer.updated_at
@@ -59,7 +62,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // 创建客户
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, checkPagePermission('customers.create'), async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body, req.user.id);
 
@@ -76,6 +79,8 @@ router.post('/', authenticateToken, async (req, res) => {
         email_count: customer.email_count,
         communication_progress: customer.communication_progress,
         interest_level: customer.interest_level,
+        deal_status: customer.deal_status || '未成交',
+        contract_count: 0,
         last_communication_time: customer.last_communication_time,
         created_at: customer.created_at,
         updated_at: customer.updated_at
@@ -93,7 +98,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // 获取单个客户
-router.get('/:customerId', authenticateToken, async (req, res) => {
+router.get('/:customerId', authenticateToken, checkPagePermission('customers.view'), async (req, res) => {
   try {
     const customer = await customerService.getCustomer(
       parseInt(req.params.customerId), 
@@ -136,7 +141,7 @@ router.get('/:customerId', authenticateToken, async (req, res) => {
 });
 
 // 更新客户
-router.put('/:customerId', authenticateToken, async (req, res) => {
+router.put('/:customerId', authenticateToken, checkPagePermission('customers.edit'), async (req, res) => {
   try {
     const customer = await customerService.updateCustomer(
       parseInt(req.params.customerId), 
@@ -164,6 +169,7 @@ router.put('/:customerId', authenticateToken, async (req, res) => {
         email_count: customer.email_count,
         communication_progress: customer.communication_progress,
         interest_level: customer.interest_level,
+        deal_status: customer.deal_status,
         last_communication_time: customer.last_communication_time,
         created_at: customer.created_at,
         updated_at: customer.updated_at
@@ -181,7 +187,7 @@ router.put('/:customerId', authenticateToken, async (req, res) => {
 });
 
 // 删除客户
-router.delete('/:customerId', authenticateToken, async (req, res) => {
+router.delete('/:customerId', authenticateToken, checkPagePermission('customers.delete'), async (req, res) => {
   try {
     const success = await customerService.deleteCustomer(
       parseInt(req.params.customerId), 

@@ -1,0 +1,978 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/settings">系统设置</a></li>
+        <li class="breadcrumb-item active">部门管理</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">部门管理</h1>
+    <p class="page-subtitle">管理公司组织架构和部门信息</p>
+  </div>
+</div>
+
+<!-- 操作区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0">部门列表</h5>
+      </div>
+      <button class="btn btn-primary" onclick="showAddDepartmentModal()">
+        <i class="bi bi-plus-lg me-1"></i>添加部门
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 面包屑导航（显示当前查看的部门路径） -->
+<div class="card mb-3" id="breadcrumbCard" style="display: none;">
+  <div class="card-body py-2">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0" id="departmentBreadcrumb">
+        <li class="breadcrumb-item"><a href="#" onclick="loadDepartments(); return false;">全部部门</a></li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<!-- 部门列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 35%;">部门名称</th>
+            <th style="width: 15%;">成员数</th>
+            <th style="width: 20%;">部门主管</th>
+            <th style="width: 10%;">子部门</th>
+            <th style="width: 20%;" class="text-center">操作</th>
+          </tr>
+        </thead>
+        <tbody id="departmentTableBody">
+          <tr>
+            <td colspan="5" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 添加/编辑部门模态框 -->
+<div class="modal fade" id="departmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="departmentModalTitle">添加部门</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="departmentForm">
+          <input type="hidden" id="departmentId">
+          <div class="mb-3">
+            <label class="form-label">部门名称 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="departmentName" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">上级部门</label>
+            <select class="form-select" id="parentDepartment">
+              <option value="">无（顶级部门）</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">部门主管</label>
+            <select class="form-select" id="departmentManager">
+              <option value="">未设置</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">部门描述</label>
+            <textarea class="form-control" id="departmentDescription" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveDepartment()">
+          <i class="bi bi-check-lg me-1"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 部门成员模态框 -->
+<div class="modal fade" id="departmentMembersModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-people-fill"></i> 
+          <span id="membersDeptName"></span> - 部门成员
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="membersListBody">
+          <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 子部门列表模态框 -->
+<div class="modal fade" id="subDepartmentsModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-diagram-3"></i> 
+          <span id="subDeptParentName"></span> - 子部门
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 35%;">部门名称</th>
+                <th style="width: 15%;">成员数</th>
+                <th style="width: 20%;">部门主管</th>
+                <th style="width: 10%;">子部门</th>
+                <th style="width: 20%;" class="text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="subDepartmentTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* 部门名称 */
+.dept-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.dept-name-cell i {
+  font-size: 1.3rem;
+  color: #667eea;
+}
+
+/* 成员数徽章 */
+.member-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(40, 167, 69, 0.1);
+  border-radius: 20px;
+  color: #28a745;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.member-count:hover {
+  background: rgba(40, 167, 69, 0.2);
+  transform: scale(1.05);
+}
+
+.member-count i {
+  font-size: 1.1rem;
+}
+
+/* 主管信息 */
+.manager-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.manager-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.manager-name {
+  color: #495057;
+  font-weight: 500;
+}
+
+/* 子部门徽章 */
+.sub-dept-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 20px;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub-dept-badge:hover {
+  background: rgba(102, 126, 234, 0.2);
+  transform: scale(1.05);
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.action-buttons .btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* 成员头像 */
+.member-avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: #e9ecef;
+  margin-bottom: 20px;
+}
+
+.empty-state h5 {
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
+.empty-state p {
+  color: #adb5bd;
+}
+
+/* 模态框层级控制 - 确保成员模态框在子部门模态框之上 */
+.modal.show {
+  z-index: 1055;
+}
+
+.modal-backdrop {
+  z-index: 1050;
+}
+
+.modal.show ~ .modal.show {
+  z-index: 1065 !important;
+}
+
+.modal-backdrop.show ~ .modal-backdrop.show {
+  z-index: 1060 !important;
+}
+</style>
+
+<script>
+console.log('📄 departments.ejs script 开始加载');
+
+let allDepartments = []; // 所有部门数据（树形）
+let currentDepartments = []; // 当前显示的部门列表
+let allUsers = [];
+let currentEditingDept = null;
+let currentParentDept = null; // 当前查看的父部门
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('🚀 页面加载开始');
+  
+  // 并行加载，互不阻塞
+  Promise.all([
+    loadDepartments(),
+    loadUsers()
+  ]).then(() => {
+    console.log('✅ 所有数据加载完成');
+  }).catch(err => {
+    console.error('❌ 数据加载错误:', err);
+  });
+});
+
+// 加载部门树
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/departments/tree', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ 部门数据:', data);
+    
+    if (!data.success) {
+      showError('加载部门列表失败: ' + (data.message || '未知错误'));
+      // 清除加载状态，显示空状态
+      allDepartments = [];
+      currentDepartments = [];
+      renderDepartmentTable(currentDepartments);
+      return;
+    }
+    
+    allDepartments = data.departments || [];
+    currentDepartments = allDepartments; // 默认显示所有一级部门
+    currentParentDept = null;
+    renderDepartmentTable(currentDepartments);
+    
+  } catch (error) {
+    console.error('❌ 加载部门列表失败:', error);
+    showError('加载部门列表失败: ' + error.message);
+    // 清除加载状态，显示空状态
+    allDepartments = [];
+    currentDepartments = [];
+    renderDepartmentTable(currentDepartments);
+  }
+}
+
+// 渲染部门表格（只显示当前层级的部门）
+function renderDepartmentTable(depts) {
+  const tbody = document.getElementById('departmentTableBody');
+  
+  if (depts.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5">
+          <div class="empty-state">
+            <i class="bi bi-diagram-3"></i>
+            <h5>暂无部门</h5>
+            <p>${currentParentDept ? '该部门下暂无子部门' : '点击右上角"添加部门"创建第一个部门'}</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let rows = '';
+  
+  depts.forEach(dept => {
+    const hasChildren = dept.children && dept.children.length > 0;
+    const childrenCount = hasChildren ? dept.children.length : 0;
+    
+    rows += `
+      <tr>
+        <td>
+          <div class="dept-name-cell">
+            <i class="bi bi-building"></i>
+            <span>${dept.name}</span>
+            ${!dept.is_active ? '<span class="badge bg-secondary ms-2">已停用</span>' : ''}
+          </div>
+        </td>
+        <td>
+          <span class="member-count" onclick="viewDepartmentMembers(${dept.id}, '${dept.name.replace(/'/g, "\\'")}')">
+            <i class="bi bi-people-fill"></i>
+            ${dept.member_count || 0}
+          </span>
+        </td>
+        <td>
+          ${dept.manager ? `
+            <div class="manager-info">
+              <div class="manager-avatar">${dept.manager.username.charAt(0).toUpperCase()}</div>
+              <span class="manager-name">${dept.manager.username}</span>
+            </div>
+          ` : '<span class="text-muted">未设置</span>'}
+        </td>
+        <td>
+          ${childrenCount > 0 ? `
+            <span class="sub-dept-badge" onclick="viewSubDepartments(${dept.id}, '${dept.name.replace(/'/g, "\\'")}')">
+              <i class="bi bi-diagram-3"></i>
+              ${childrenCount}
+            </span>
+          ` : '<span class="text-muted">-</span>'}
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline-primary" onclick="editDepartment(${dept.id}, '${dept.name.replace(/'/g, "\\'")}', ${dept.parent_id || 'null'}, ${dept.manager_id || 'null'}, '${(dept.description || '').replace(/'/g, "\\'")}')">
+              <i class="bi bi-pencil"></i> 编辑
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteDepartment(${dept.id}, '${dept.name.replace(/'/g, "\\'")}')">
+              <i class="bi bi-trash"></i> 删除
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = rows;
+}
+
+// 加载用户列表（用于选择主管）
+async function loadUsers() {
+  try {
+    console.log('📋 开始加载用户列表...');
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch('/api/users?pageSize=100', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ 用户数据:', data);
+    
+    if (data.success) {
+      allUsers = data.users || [];
+      updateManagerSelect();
+      console.log(`✅ 加载了 ${allUsers.length} 个用户`);
+    } else {
+      console.warn('⚠️ 加载用户列表失败:', data.message);
+    }
+  } catch (error) {
+    console.error('❌ 加载用户列表失败:', error);
+    // 即使失败也不阻塞页面
+    allUsers = [];
+  }
+}
+
+// 更新主管选择框
+function updateManagerSelect() {
+  const select = document.getElementById('departmentManager');
+  select.innerHTML = '<option value="">未设置</option>';
+  
+  allUsers.forEach(user => {
+    select.innerHTML += `<option value="${user.id}">${user.username} (${user.email})</option>`;
+  });
+}
+
+// 查看子部门
+function viewSubDepartments(parentId, parentName) {
+  // 找到该部门
+  const dept = findDepartmentById(allDepartments, parentId);
+  if (!dept || !dept.children || dept.children.length === 0) {
+    showWarning('该部门下暂无子部门');
+    return;
+  }
+  
+  // 设置模态框标题
+  document.getElementById('subDeptParentName').textContent = parentName;
+  
+  // 渲染子部门表格
+  const tbody = document.getElementById('subDepartmentTableBody');
+  let rows = '';
+  
+  dept.children.forEach(child => {
+    const hasChildren = child.children && child.children.length > 0;
+    const childrenCount = hasChildren ? child.children.length : 0;
+    
+    rows += `
+      <tr>
+        <td>
+          <div class="dept-name-cell">
+            <i class="bi bi-diagram-2"></i>
+            <span>${child.name}</span>
+            ${!child.is_active ? '<span class="badge bg-secondary ms-2">已停用</span>' : ''}
+          </div>
+        </td>
+        <td>
+          <span class="member-count" onclick="viewDepartmentMembers(${child.id}, '${child.name.replace(/'/g, "\\'")}')">
+            <i class="bi bi-people-fill"></i>
+            ${child.member_count || 0}
+          </span>
+        </td>
+        <td>
+          ${child.manager ? `
+            <div class="manager-info">
+              <div class="manager-avatar">${child.manager.username.charAt(0).toUpperCase()}</div>
+              <span class="manager-name">${child.manager.username}</span>
+            </div>
+          ` : '<span class="text-muted">未设置</span>'}
+        </td>
+        <td>
+          ${childrenCount > 0 ? `
+            <span class="sub-dept-badge" onclick="viewSubDepartments(${child.id}, '${child.name.replace(/'/g, "\\'")}')">
+              <i class="bi bi-diagram-3"></i>
+              ${childrenCount}
+            </span>
+          ` : '<span class="text-muted">-</span>'}
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-outline-primary" onclick="editDepartment(${child.id}, '${child.name.replace(/'/g, "\\'")}', ${child.parent_id || 'null'}, ${child.manager_id || 'null'}, '${(child.description || '').replace(/'/g, "\\'")}')">
+              <i class="bi bi-pencil"></i> 编辑
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteDepartment(${child.id}, '${child.name.replace(/'/g, "\\'")}')">
+              <i class="bi bi-trash"></i> 删除
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = rows;
+  
+  // 显示模态框
+  new bootstrap.Modal(document.getElementById('subDepartmentsModal')).show();
+}
+
+// 查看部门成员
+async function viewDepartmentMembers(deptId, deptName) {
+  try {
+    document.getElementById('membersDeptName').textContent = deptName;
+    
+    const membersModalEl = document.getElementById('departmentMembersModal');
+    const modal = new bootstrap.Modal(membersModalEl);
+    
+    // 监听模态框显示事件，动态调整z-index
+    membersModalEl.addEventListener('shown.bs.modal', function () {
+      // 获取所有当前显示的modal和backdrop
+      const allModals = document.querySelectorAll('.modal.show');
+      const allBackdrops = document.querySelectorAll('.modal-backdrop.show');
+      
+      // 如果有多个模态框，将成员模态框置于最上层
+      if (allModals.length > 1) {
+        membersModalEl.style.zIndex = '1070';
+        if (allBackdrops.length > 0) {
+          allBackdrops[allBackdrops.length - 1].style.zIndex = '1065';
+        }
+      }
+    }, { once: true });
+    
+    modal.show();
+    
+    // 加载成员数据
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`/api/departments/${deptId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      document.getElementById('membersListBody').innerHTML = `
+        <div class="empty-state">
+          <i class="bi bi-exclamation-circle"></i>
+          <h5>加载失败</h5>
+          <p>${data.message || '未知错误'}</p>
+        </div>
+      `;
+      return;
+    }
+    
+    const dept = data.department;
+    let members = dept.members || [];
+    
+    console.log('部门数据:', dept);
+    console.log('成员列表:', members);
+    console.log('主管信息:', dept.manager);
+    
+    // 如果有主管且主管不在成员列表中，手动添加
+    if (dept.manager && dept.manager.id) {
+      const managerInList = members.find(m => m.id === dept.manager.id);
+      if (!managerInList) {
+        members = [dept.manager, ...members];
+        console.log('✅ 已将主管添加到成员列表');
+      }
+    }
+    
+    if (members.length === 0) {
+      document.getElementById('membersListBody').innerHTML = `
+        <div class="empty-state">
+          <i class="bi bi-people"></i>
+          <h5>暂无成员</h5>
+          <p>该部门下暂无员工</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // 按角色排序：主管 → 超级管理员 → 管理员 → 普通用户
+    const sortedMembers = members.sort((a, b) => {
+      // 主管优先
+      if (dept.manager_id && a.id === dept.manager_id) return -1;
+      if (dept.manager_id && b.id === dept.manager_id) return 1;
+      
+      // 角色排序
+      const roleOrder = { 'super_admin': 1, 'admin': 2, 'user': 3 };
+      return (roleOrder[a.role] || 999) - (roleOrder[b.role] || 999);
+    });
+    
+    console.log('排序后的成员:', sortedMembers);
+    
+    // 渲染成员列表
+    let html = `
+      <div class="mb-3">
+        <h6 class="text-muted mb-3">
+          <i class="bi bi-people-fill me-2"></i>共 ${sortedMembers.length} 名成员
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 25%;">姓名</th>
+              <th style="width: 20%;">角色</th>
+              <th style="width: 15%;">职位</th>
+              <th style="width: 40%;">邮箱</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    sortedMembers.forEach(member => {
+      const isManager = dept.manager_id && member.id === dept.manager_id;
+      let roleBadge = '';
+      let positionBadge = '';
+      
+      // 角色徽章（与用户列表颜色一致）
+      if (member.role === 'super_admin') {
+        roleBadge = '<span class="badge bg-danger">超级管理员</span>';
+      } else if (member.role === 'admin') {
+        roleBadge = '<span class="badge bg-warning text-dark">管理员</span>';
+      } else {
+        roleBadge = '<span class="badge bg-primary">普通用户</span>';
+      }
+      
+      // 职位徽章
+      if (isManager) {
+        positionBadge = '<span class="badge bg-primary"><i class="bi bi-star-fill"></i> 部门主管</span>';
+      } else {
+        positionBadge = '<span class="text-muted">-</span>';
+      }
+      
+      html += `
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="member-avatar-small">${member.username.charAt(0).toUpperCase()}</div>
+              <strong>${member.username}</strong>
+            </div>
+          </td>
+          <td>${roleBadge}</td>
+          <td>${positionBadge}</td>
+          <td>
+            <span class="text-muted">
+              <i class="bi bi-envelope me-1"></i>${member.email}
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    document.getElementById('membersListBody').innerHTML = html;
+    
+  } catch (error) {
+    console.error('加载部门成员失败:', error);
+    document.getElementById('membersListBody').innerHTML = `
+      <div class="empty-state">
+        <i class="bi bi-exclamation-circle"></i>
+        <h5>加载失败</h5>
+        <p>${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+// 辅助函数：在树形结构中查找部门
+function findDepartmentById(depts, id) {
+  for (let dept of depts) {
+    if (dept.id === id) return dept;
+    if (dept.children && dept.children.length > 0) {
+      const found = findDepartmentById(dept.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// 更新上级部门选择框
+function updateParentSelect(excludeId = null) {
+  const select = document.getElementById('parentDepartment');
+  select.innerHTML = '<option value="">无（顶级部门）</option>';
+  
+  function addDeptOptions(depts, prefix = '') {
+    depts.forEach(dept => {
+      if (dept.id !== excludeId) {
+        select.innerHTML += `<option value="${dept.id}">${prefix}${dept.name}</option>`;
+        if (dept.children && dept.children.length > 0) {
+          addDeptOptions(dept.children, prefix + '　');
+        }
+      }
+    });
+  }
+  
+  addDeptOptions(allDepartments);
+}
+
+// 显示添加部门模态框
+function showAddDepartmentModal() {
+  currentEditingDept = null;
+  document.getElementById('departmentModalTitle').textContent = '添加部门';
+  document.getElementById('departmentId').value = '';
+  document.getElementById('departmentName').value = '';
+  document.getElementById('parentDepartment').value = '';
+  document.getElementById('departmentManager').value = '';
+  document.getElementById('departmentDescription').value = '';
+  
+  updateParentSelect();
+  
+  new bootstrap.Modal(document.getElementById('departmentModal')).show();
+}
+
+// 编辑部门
+function editDepartment(id, name, parentId, managerId, description) {
+  currentEditingDept = id;
+  document.getElementById('departmentModalTitle').textContent = '编辑部门';
+  document.getElementById('departmentId').value = id;
+  document.getElementById('departmentName').value = name;
+  document.getElementById('departmentDescription').value = description || '';
+  
+  updateParentSelect(id);  // 排除自己
+  
+  setTimeout(() => {
+    document.getElementById('parentDepartment').value = parentId || '';
+    document.getElementById('departmentManager').value = managerId || '';
+  }, 100);
+  
+  new bootstrap.Modal(document.getElementById('departmentModal')).show();
+}
+
+// 保存部门
+async function saveDepartment() {
+  try {
+    const departmentId = document.getElementById('departmentId').value;
+    const name = document.getElementById('departmentName').value.trim();
+    const parentId = document.getElementById('parentDepartment').value;
+    const managerId = document.getElementById('departmentManager').value;
+    const description = document.getElementById('departmentDescription').value.trim();
+    
+    if (!name) {
+      showWarning('请输入部门名称');
+      return;
+    }
+    
+    const token = localStorage.getItem('authToken');
+    const url = departmentId ? `/api/departments/${departmentId}` : '/api/departments';
+    const method = departmentId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        parent_id: parentId ? parseInt(parentId) : null,
+        manager_id: managerId ? parseInt(managerId) : null,
+        description
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '保存失败');
+      return;
+    }
+    
+    showSuccess(departmentId ? '部门更新成功' : '部门创建成功');
+    bootstrap.Modal.getInstance(document.getElementById('departmentModal')).hide();
+    await loadDepartments();
+    
+  } catch (error) {
+    console.error('保存部门失败:', error);
+    showError('保存失败: ' + error.message);
+  }
+}
+
+// 删除部门
+async function deleteDepartment(id, name) {
+  if (!confirm(`确定要删除部门"${name}"吗？\n\n注意：如果部门下有子部门或成员，将无法删除。`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/departments/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '删除失败');
+      return;
+    }
+    
+    showSuccess('部门删除成功');
+    await loadDepartments();
+    
+  } catch (error) {
+    console.error('删除部门失败:', error);
+    showError('删除失败: ' + error.message);
+  }
+}
+
+// 查看部门详情
+async function viewDepartmentDetail(id) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const [deptResponse, membersResponse] = await Promise.all([
+      fetch(`/api/departments/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      fetch(`/api/departments/${id}/members?includeSubDepartments=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    ]);
+    
+    const deptData = await deptResponse.json();
+    const membersData = await membersResponse.json();
+    
+    if (!deptData.success) {
+      showError('获取部门详情失败');
+      return;
+    }
+    
+    const dept = deptData.department;
+    const members = membersData.members || [];
+    
+    const html = `
+      <div class="mb-3">
+        <h6>基本信息</h6>
+        <table class="table table-sm">
+          <tr>
+            <th width="120">部门名称:</th>
+            <td>${dept.name}</td>
+          </tr>
+          <tr>
+            <th>上级部门:</th>
+            <td>${dept.parent ? dept.parent.name : '无（顶级部门）'}</td>
+          </tr>
+          <tr>
+            <th>部门层级:</th>
+            <td>第 ${dept.level} 级</td>
+          </tr>
+          <tr>
+            <th>部门主管:</th>
+            <td>${dept.manager ? `${dept.manager.username} (${dept.manager.email})` : '未设置'}</td>
+          </tr>
+          <tr>
+            <th>部门描述:</th>
+            <td>${dept.description || '-'}</td>
+          </tr>
+          <tr>
+            <th>成员数量:</th>
+            <td>${dept.member_count || 0} 人</td>
+          </tr>
+          <tr>
+            <th>子部门数:</th>
+            <td>${dept.child_count || 0} 个</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div class="mb-3">
+        <h6>部门成员（含子部门）</h6>
+        ${members.length > 0 ? `
+          <div class="list-group">
+            ${members.map(member => `
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>${member.username}</strong>
+                    <span class="badge bg-${member.role === 'super_admin' ? 'danger' : member.role === 'admin' ? 'warning' : 'primary'} ms-2">
+                      ${member.role === 'super_admin' ? '超级管理员' : member.role === 'admin' ? '管理员' : '员工'}
+                    </span>
+                    <div class="small text-muted">
+                      ${member.email} | ${member.department.name}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p class="text-muted">暂无成员</p>'}
+      </div>
+    `;
+    
+    document.getElementById('departmentDetailBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('departmentDetailModal')).show();
+    
+  } catch (error) {
+    console.error('获取部门详情失败:', error);
+    showError('获取部门详情失败');
+  }
+}
+</script>

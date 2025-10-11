@@ -102,6 +102,46 @@ class OpenAIService {
       };
     }
   }
+
+  /**
+   * 通用的文本生成方法（用于报告生成等）
+   * @param {Array} messages - 消息数组
+   * @param {Object} options - 配置选项
+   * @returns {String} 生成的文本内容
+   */
+  async generateCompletion(messages, options = {}) {
+    try {
+      const requestParams = {
+        model: config.openai.model,
+        messages: messages
+      };
+      
+      // 只添加支持的参数（某些模型不支持temperature等参数）
+      // if (options.temperature !== undefined) {
+      //   requestParams.temperature = options.temperature;
+      // }
+      // if (options.maxTokens !== undefined) {
+      //   requestParams.max_completion_tokens = options.maxTokens;
+      // }
+      
+      console.log('🤖 调用OpenAI生成文本...');
+      
+      const response = await this.client.chat.completions.create(requestParams);
+      
+      const content = response.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('AI未返回任何内容');
+      }
+      
+      console.log('✅ AI生成完成，长度:', content.length);
+      
+      return content;
+    } catch (error) {
+      console.error('❌ OpenAI生成失败:', error);
+      throw new Error(`AI生成失败: ${error.message}`);
+    }
+  }
 }
 
 module.exports = OpenAIService;

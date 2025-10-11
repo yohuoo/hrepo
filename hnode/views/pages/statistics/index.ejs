@@ -1,0 +1,1371 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">数据统计</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">数据统计分析</h1>
+    <p class="page-subtitle">可视化展示您的业务数据</p>
+  </div>
+</div>
+
+<!-- 筛选区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <!-- 超级管理员/管理员筛选器 -->
+    <div class="row g-3 align-items-center mb-3" id="adminFilters" style="display: none;">
+      <div class="col-md-4">
+        <label class="form-label mb-1">查看范围</label>
+        <select class="form-select" id="viewScope" onchange="handleScopeChange()">
+          <option value="all">全部数据</option>
+          <option value="department">按部门</option>
+          <option value="user">按用户</option>
+        </select>
+      </div>
+      <div class="col-md-4" id="departmentFilter" style="display: none;">
+        <label class="form-label mb-1">选择部门</label>
+        <select class="form-select" id="filterDepartment" onchange="loadStatistics()">
+          <option value="">请选择部门</option>
+        </select>
+      </div>
+      <div class="col-md-4" id="userFilter" style="display: none;">
+        <label class="form-label mb-1">选择用户</label>
+        <select class="form-select" id="filterUser" onchange="loadStatistics()">
+          <option value="">请选择用户</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- 时间范围筛选 -->
+    <div class="row g-3 align-items-center">
+      <div class="col-md-6">
+        <div class="btn-group w-100" role="group">
+          <button type="button" class="btn btn-outline-primary" onclick="setTimeRange('1d')">今日</button>
+          <button type="button" class="btn btn-outline-primary active" onclick="setTimeRange('7d')">7天</button>
+          <button type="button" class="btn btn-outline-primary" onclick="setTimeRange('30d')">30天</button>
+          <button type="button" class="btn btn-outline-primary" onclick="setTimeRange('3m')">3个月</button>
+          <button type="button" class="btn btn-outline-primary" onclick="setTimeRange('6m')">6个月</button>
+          <button type="button" class="btn btn-outline-primary" onclick="setTimeRange('all')">全部</button>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <input type="date" class="form-control" id="customStartDate" placeholder="开始日期" onchange="handleCustomDateChange()">
+      </div>
+      <div class="col-md-3">
+        <input type="date" class="form-control" id="customEndDate" placeholder="结束日期" onchange="handleCustomDateChange()">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 数据卡片 -->
+<div class="row mb-4">
+  <div class="col-lg-3 col-md-6 mb-3">
+    <div class="card stat-card h-100" onclick="showContactDetails()" style="cursor: pointer;">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-person-lines-fill text-primary"></i> 新增联系人
+            </h6>
+            <h2 class="mb-1" id="contactsCount">0</h2>
+            <small class="text-muted d-block" style="min-height: 20px;">&nbsp;</small>
+          </div>
+          <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+            <i class="bi bi-person-plus"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-3 col-md-6 mb-3">
+    <div class="card stat-card h-100" onclick="showCustomerDetails()" style="cursor: pointer;">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-people text-success"></i> 新增客户
+            </h6>
+            <h2 class="mb-1" id="customersCount">0</h2>
+            <small class="text-muted d-block" style="min-height: 20px;">&nbsp;</small>
+          </div>
+          <div class="stat-icon bg-success bg-opacity-10 text-success">
+            <i class="bi bi-building-add"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-3 col-md-6 mb-3">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-envelope text-info"></i> 邮件互动
+            </h6>
+            <h2 class="mb-1" id="emailsCount">0</h2>
+            <small class="text-muted d-block" id="emailsDetail" style="min-height: 20px;">发送0 / 接收0</small>
+          </div>
+          <div class="stat-icon bg-info bg-opacity-10 text-info">
+            <i class="bi bi-send"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-3 col-md-6 mb-3">
+    <div class="card stat-card h-100" onclick="window.location.href='/sales'" style="cursor: pointer;">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-cash-coin text-warning"></i> 销售总额
+            </h6>
+            <h2 class="mb-1" id="salesAmount">$0</h2>
+            <small class="text-muted d-block" id="salesDetail" style="min-height: 20px;">0笔交易</small>
+          </div>
+          <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+            <i class="bi bi-graph-up-arrow"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 图表区域 - 动态布局 -->
+<div class="row" id="trendsRow">
+  <!-- 数据趋势图 -->
+  <div class="mb-4" id="trendChartCol">
+    <div class="card chart-card">
+      <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 fw-semibold"><i class="bi bi-graph-up text-primary me-2"></i>数据趋势</h5>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 销售趋势图 -->
+  <div class="mb-4" id="salesChartCol">
+    <div class="card chart-card">
+      <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 fw-semibold"><i class="bi bi-graph-up-arrow text-warning me-2"></i>销售趋势</h5>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- 客户兴趣度 -->
+  <div class="col-lg-6 mb-4">
+    <div class="card chart-card h-100">
+      <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 fw-semibold"><i class="bi bi-pie-chart text-success me-2"></i>客户兴趣度分布</h5>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <div class="chart-container-doughnut">
+          <canvas id="interestChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 数据洞察 -->
+  <div class="col-lg-6 mb-4">
+    <div class="card chart-card h-100">
+      <div class="card-header bg-white border-bottom">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-lightbulb text-warning me-2"></i>数据洞察</h5>
+          <button class="btn btn-outline-warning btn-sm" onclick="loadDataInsights()">
+            <i class="bi bi-arrow-clockwise"></i> 刷新
+          </button>
+        </div>
+      </div>
+      <div class="card-body" id="dataInsightsContainer">
+        <div class="text-center p-4">
+          <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">加载中...</span>
+          </div>
+          <p class="text-muted mt-2">AI正在分析数据...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI动作建议 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card chart-card">
+      <div class="card-header bg-white border-bottom">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-robot text-primary me-2"></i>AI动作建议</h5>
+          <button class="btn btn-outline-primary btn-sm" onclick="loadAISuggestions()">
+            <i class="bi bi-arrow-clockwise"></i> 刷新建议
+          </button>
+        </div>
+      </div>
+      <div class="card-body" id="aiSuggestionsContainer">
+        <div class="text-center p-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+          </div>
+          <p class="text-muted mt-2">AI正在分析数据...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.stat-card {
+  transition: all 0.2s;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.stat-card:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 24px;
+}
+
+/* 图表卡片统一样式 */
+.chart-card {
+  border: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+
+.chart-card .card-header {
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.chart-card .card-body {
+  padding: 1.5rem;
+}
+
+/* 折线图容器 - 统一高度 */
+.chart-container {
+  position: relative;
+  height: 350px;
+  width: 100%;
+}
+
+/* 环形图容器 - 固定尺寸 */
+.chart-container-doughnut {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  height: 400px;
+}
+
+/* 确保canvas响应式 */
+.chart-container canvas,
+.chart-container-doughnut canvas {
+  max-width: 100%;
+  height: 100% !important;
+}
+
+
+/* 响应式优化 */
+@media (max-width: 991px) {
+  .chart-container {
+    height: 300px;
+  }
+  
+  .chart-container-doughnut {
+    height: 350px;
+  }
+}
+
+@media (max-width: 767px) {
+  .chart-container {
+    height: 250px;
+  }
+  
+  .chart-container-doughnut {
+    height: 300px;
+  }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let currentTimeRange = '7d';
+let trendChart = null;
+let interestChart = null;
+let salesChart = null;
+let currentUser = null;
+let allDepartments = [];
+let allUsers = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('🚀 统计页面JS已加载 - 版本: 2.0');
+  
+  // 获取当前用户信息
+  currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  console.log('👤 当前用户:', currentUser);
+  
+  // 如果userInfo中没有role字段，从后端重新获取
+  if (!currentUser.role) {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        currentUser = data.user;
+        localStorage.setItem('userInfo', JSON.stringify(currentUser));
+        console.log('✅ 重新获取用户信息:', currentUser);
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+    }
+  }
+  
+  // 如果是超级管理员或管理员，显示筛选器并加载部门和用户
+  if (currentUser.role === 'super_admin' || currentUser.role === 'admin') {
+    console.log('🔓 显示管理员筛选器');
+    document.getElementById('adminFilters').style.display = '';
+    await loadDepartments();
+    await loadUsers();
+  }
+  
+  await loadStatistics();
+  await Promise.all([
+    loadAISuggestions(),
+    loadDataInsights()
+  ]);
+});
+
+// 限制数据为最多30天（从开始时间算起）
+function limitDataTo30Days(dailyData) {
+  if (!dailyData || dailyData.length === 0) {
+    return [];
+  }
+  
+  // 如果数据点少于等于30天，直接返回
+  if (dailyData.length <= 30) {
+    return dailyData;
+  }
+  
+  // 只返回前30天的数据
+  console.log(`📊 数据点过多(${dailyData.length}天)，限制为前30天`);
+  return dailyData.slice(0, 30);
+}
+
+// 根据数据点数量动态调整图表布局
+function adjustChartLayout(dataPoints) {
+  const trendCol = document.getElementById('trendChartCol');
+  const salesCol = document.getElementById('salesChartCol');
+  
+  console.log(`📐 数据点数量: ${dataPoints}天，调整布局...`);
+  
+  if (dataPoints < 15) {
+    // 少于15天：两个图表并排显示
+    trendCol.className = 'col-lg-6 mb-4';
+    salesCol.className = 'col-lg-6 mb-4';
+    console.log('✅ 布局: 并排显示（数据点 < 15天）');
+  } else {
+    // 15天及以上：两个图表分两行显示
+    trendCol.className = 'col-12 mb-4';
+    salesCol.className = 'col-12 mb-4';
+    console.log('✅ 布局: 分行显示（数据点 >= 15天）');
+  }
+}
+
+// 设置时间范围
+function setTimeRange(range) {
+  currentTimeRange = range;
+  
+  // 更新按钮状态
+  document.querySelectorAll('.btn-group button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  // 清空自定义日期选择
+  document.getElementById('customStartDate').value = '';
+  document.getElementById('customEndDate').value = '';
+  
+  loadStatistics();
+}
+
+// 处理自定义日期变化
+function handleCustomDateChange() {
+  const customStart = document.getElementById('customStartDate').value;
+  const customEnd = document.getElementById('customEndDate').value;
+  
+  // 只有当两个日期都选择了才加载数据
+  if (customStart && customEnd) {
+    // 取消预设时间范围按钮的激活状态
+    document.querySelectorAll('.btn-group button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    console.log('📅 自定义日期范围:', customStart, '至', customEnd);
+    loadStatistics();
+    loadAISuggestions();
+  }
+}
+
+// 加载部门列表
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/departments/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.success) {
+      allDepartments = flattenDepartments(data.departments || []);
+      updateDepartmentSelect();
+    }
+  } catch (error) {
+    console.error('加载部门失败:', error);
+  }
+}
+
+// 扁平化部门树
+function flattenDepartments(depts, result = []) {
+  depts.forEach(dept => {
+    result.push(dept);
+    if (dept.children && dept.children.length > 0) {
+      flattenDepartments(dept.children, result);
+    }
+  });
+  return result;
+}
+
+// 更新部门选择器
+function updateDepartmentSelect() {
+  const select = document.getElementById('filterDepartment');
+  select.innerHTML = '<option value="">请选择部门</option>';
+  allDepartments.forEach(dept => {
+    const indent = '　'.repeat(dept.level - 1);
+    select.innerHTML += `<option value="${dept.id}">${indent}${dept.name}</option>`;
+  });
+}
+
+// 加载用户列表
+async function loadUsers() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/users?pageSize=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.success) {
+      allUsers = data.users || [];
+      updateUserSelect();
+    }
+  } catch (error) {
+    console.error('加载用户失败:', error);
+  }
+}
+
+// 更新用户选择器
+function updateUserSelect() {
+  const select = document.getElementById('filterUser');
+  select.innerHTML = '<option value="">请选择用户</option>';
+  allUsers.forEach(user => {
+    select.innerHTML += `<option value="${user.id}">${user.username} (${user.email})</option>`;
+  });
+}
+
+// 处理范围变化
+function handleScopeChange() {
+  const scope = document.getElementById('viewScope').value;
+  const departmentFilter = document.getElementById('departmentFilter');
+  const userFilter = document.getElementById('userFilter');
+  
+  console.log('🔄 筛选范围改变:', scope);
+  
+  if (scope === 'department') {
+    departmentFilter.style.display = '';
+    userFilter.style.display = 'none';
+    // 重置部门选择
+    document.getElementById('filterDepartment').value = '';
+  } else if (scope === 'user') {
+    departmentFilter.style.display = 'none';
+    userFilter.style.display = '';
+    // 重置用户选择
+    document.getElementById('filterUser').value = '';
+  } else {
+    departmentFilter.style.display = 'none';
+    userFilter.style.display = 'none';
+  }
+  
+  // 立即重新加载统计数据
+  loadStatistics();
+}
+
+// 加载统计数据
+async function loadStatistics() {
+  try {
+    console.log('=== loadStatistics 函数被调用 ===');
+    console.log('当前用户信息:', currentUser);
+    
+    const token = localStorage.getItem('authToken');
+    
+    let timeRange = currentTimeRange;
+    const customStart = document.getElementById('customStartDate').value;
+    const customEnd = document.getElementById('customEndDate').value;
+    
+    if (customStart && customEnd) {
+      timeRange = `${customStart}|${customEnd}`;
+    }
+    
+    // 构建查询参数
+    let queryParams = `time_range=${timeRange}`;
+    
+    // 如果是超级管理员或管理员，添加筛选参数
+    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin')) {
+      const viewScopeElement = document.getElementById('viewScope');
+      const scope = viewScopeElement ? viewScopeElement.value : 'all';
+      console.log('🔍 当前筛选范围:', scope);
+      console.log('🔍 viewScope元素:', viewScopeElement);
+      
+      if (scope === 'department') {
+        const deptElement = document.getElementById('filterDepartment');
+        const deptId = deptElement ? deptElement.value : '';
+        console.log('🏢 filterDepartment元素:', deptElement);
+        console.log('🏢 选择的部门ID:', deptId);
+        if (deptId) {
+          queryParams += `&department_id=${deptId}`;
+          console.log('✅ 添加部门筛选参数，最终URL参数:', queryParams);
+        } else {
+          console.log('⚠️ 未选择具体部门');
+        }
+      } else if (scope === 'user') {
+        const userElement = document.getElementById('filterUser');
+        const selectedUserId = userElement ? userElement.value : '';
+        console.log('👤 filterUser元素:', userElement);
+        console.log('👤 选择的用户ID:', selectedUserId);
+        if (selectedUserId) {
+          queryParams += `&user_id=${selectedUserId}`;
+          console.log('✅ 添加用户筛选参数，最终URL参数:', queryParams);
+        } else {
+          console.log('⚠️ 未选择具体用户');
+        }
+      } else {
+        console.log('📊 查看全部数据（无筛选）');
+      }
+    } else {
+      console.log('❌ 当前用户不是管理员，或currentUser未定义:', currentUser);
+    }
+    
+    console.log('📊 最终请求URL:', `/api/statistics/dashboard?${queryParams}`);
+    
+    const response = await fetch(`/api/statistics/dashboard?${queryParams}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    console.log('📥 统计数据响应:', data);
+    
+    if (!data.success) {
+      console.error('❌ 加载统计数据失败:', data.message);
+      showError('加载统计数据失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    const stats = data.statistics;
+    console.log('📈 统计数据:', stats);
+    
+    // 更新数据卡片
+    document.getElementById('contactsCount').textContent = stats.contacts?.total || 0;
+    document.getElementById('customersCount').textContent = stats.customers?.total || 0;
+    document.getElementById('emailsCount').textContent = (stats.emails?.sent || 0) + (stats.emails?.received || 0);
+    document.getElementById('emailsDetail').textContent = `发送${stats.emails?.sent || 0} / 接收${stats.emails?.received || 0}`;
+    document.getElementById('salesAmount').textContent = `$${parseFloat(stats.sales?.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('salesDetail').textContent = `${stats.sales?.total_records || 0}笔交易`;
+    
+    // 限制数据为最多30天并调整布局
+    const contactsDaily = limitDataTo30Days(stats.contacts?.daily || []);
+    const customersDaily = limitDataTo30Days(stats.customers?.daily || []);
+    const salesDaily = limitDataTo30Days(stats.sales?.daily || []);
+    
+    // 根据数据点数量调整布局
+    adjustChartLayout(Math.max(contactsDaily.length, customersDaily.length, salesDaily.length));
+    
+    // 渲染图表
+    renderTrendChart(contactsDaily, customersDaily);
+    renderInterestChart(stats.customers?.by_interest || []);
+    renderSalesChart(salesDaily);
+    
+  } catch (error) {
+    console.error('加载统计数据失败:', error);
+    showError('加载失败');
+  }
+}
+
+// 渲染趋势图
+function renderTrendChart(contactsDaily, customersDaily) {
+  const ctx = document.getElementById('trendChart');
+  
+  if (trendChart) {
+    trendChart.destroy();
+  }
+  
+  // 合并所有日期，确保两条线的日期一致
+  const allDates = new Set([
+    ...contactsDaily.map(d => d.date),
+    ...customersDaily.map(d => d.date)
+  ]);
+  const sortedDates = Array.from(allDates).sort();
+  
+  // 为每个日期准备数据，如果某天没有数据则为0
+  const contactsMap = new Map(contactsDaily.map(d => [d.date, parseInt(d.count)]));
+  const customersMap = new Map(customersDaily.map(d => [d.date, parseInt(d.count)]));
+  
+  const contactsData = sortedDates.map(date => contactsMap.get(date) || 0);
+  const customersData = sortedDates.map(date => customersMap.get(date) || 0);
+  
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sortedDates,
+      datasets: [
+        {
+          label: '新增联系人',
+          data: contactsData,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: '新增客户',
+          data: customersData,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          tension: 0.4,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          }
+        }
+      }
+    }
+  });
+}
+
+// 渲染兴趣度饼图
+function renderInterestChart(interestData) {
+  const ctx = document.getElementById('interestChart');
+  
+  if (interestChart) {
+    interestChart.destroy();
+  }
+  
+  const labels = [];
+  const data = [];
+  const colors = [];
+  
+  interestData.forEach(item => {
+    if (item.interest_level === 'high') {
+      labels.push('高兴趣');
+      data.push(item.count);
+      colors.push('#28a745');
+    } else if (item.interest_level === 'medium') {
+      labels.push('中等兴趣');
+      data.push(item.count);
+      colors.push('#ffc107');
+    } else if (item.interest_level === 'low') {
+      labels.push('低兴趣');
+      data.push(item.count);
+      colors.push('#dc3545');
+    } else if (item.interest_level === 'none') {
+      labels.push('无兴趣');
+      data.push(item.count);
+      colors.push('#6c757d');
+    }
+  });
+  
+  if (data.length === 0) {
+    labels.push('暂无数据');
+    data.push(1);
+    colors.push('#e9ecef');
+  }
+  
+  interestChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            font: {
+              size: 13
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+// 渲染销售趋势图（双Y轴：金额 + 数量 + 交易笔数）
+function renderSalesChart(salesDaily) {
+  const ctx = document.getElementById('salesChart');
+  
+  if (salesChart) {
+    salesChart.destroy();
+  }
+  
+  // 准备数据
+  const dates = salesDaily.map(d => d.date);
+  const amounts = salesDaily.map(d => parseFloat(d.amount || 0));
+  const quantities = salesDaily.map(d => parseFloat(d.quantity || 0));
+  const counts = salesDaily.map(d => parseInt(d.count || 0));
+  
+  salesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: '销售金额 (USD)',
+          data: amounts,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y-amount'
+        },
+        {
+          label: '销售数量',
+          data: quantities,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y-quantity'
+        },
+        {
+          label: '交易笔数',
+          data: counts,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          tension: 0.4,
+          fill: true,
+          yAxisID: 'y-quantity'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            padding: 15,
+            font: {
+              size: 13
+            },
+            usePointStyle: true,
+            pointStyle: 'circle'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: {
+            size: 14
+          },
+          bodyFont: {
+            size: 13
+          },
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.dataset.label === '销售金额 (USD)') {
+                // 销售金额：显示为货币格式
+                label += '$' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+              } else if (context.dataset.label === '交易笔数') {
+                // 交易笔数：显示为整数
+                label += context.parsed.y + ' 笔';
+              } else {
+                // 销售数量：显示为小数
+                label += context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+              }
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false
+          },
+          title: {
+            display: false
+          }
+        },
+        'y-amount': {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: '销售金额',
+            color: '#f59e0b',
+            font: {
+              size: 12,
+              weight: 'bold'
+            }
+          },
+          ticks: {
+            callback: function(value) {
+              return '$' + value.toLocaleString('en-US');
+            },
+            color: '#f59e0b',
+            font: {
+              size: 11
+            }
+          },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)',
+            drawOnChartArea: true,
+          },
+        },
+        'y-quantity': {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: '数量/笔数',
+            color: '#3b82f6',
+            font: {
+              size: 12,
+              weight: 'bold'
+            }
+          },
+          ticks: {
+            color: '#3b82f6',
+            font: {
+              size: 11
+            }
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
+        }
+      }
+    }
+  });
+}
+
+// 显示联系人详情
+async function showContactDetails() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    let timeRange = currentTimeRange;
+    const customStart = document.getElementById('customStartDate').value;
+    const customEnd = document.getElementById('customEndDate').value;
+    
+    if (customStart && customEnd) {
+      timeRange = `${customStart}|${customEnd}`;
+    }
+    
+    const response = await fetch(`/api/statistics/contacts/details?time_range=${timeRange}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取联系人详情失败');
+      return;
+    }
+    
+    const contacts = data.contacts || [];
+    
+    let html = `
+      <div class="modal fade" id="contactDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">联系人详细列表</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              ${contacts.length > 0 ? `
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>姓名</th>
+                        <th>邮箱</th>
+                        <th>公司</th>
+                        <th>添加时间</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${contacts.map(c => `
+                        <tr>
+                          <td>${c.name}</td>
+                          <td>${c.email}</td>
+                          <td>${c.company}</td>
+                          <td>${new Date(c.created_at).toLocaleString('zh-CN')}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : '<p class="text-muted text-center">该时间段内无新增联系人</p>'}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 移除旧模态框
+    const oldModal = document.getElementById('contactDetailsModal');
+    if (oldModal) oldModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('contactDetailsModal')).show();
+    
+  } catch (error) {
+    console.error('获取联系人详情失败:', error);
+    showError('获取联系人详情失败');
+  }
+}
+
+// 显示客户详情
+async function showCustomerDetails() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    let timeRange = currentTimeRange;
+    const customStart = document.getElementById('customStartDate').value;
+    const customEnd = document.getElementById('customEndDate').value;
+    
+    if (customStart && customEnd) {
+      timeRange = `${customStart}|${customEnd}`;
+    }
+    
+    const response = await fetch(`/api/statistics/customers/details?time_range=${timeRange}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取客户详情失败');
+      return;
+    }
+    
+    const customers = data.customers || [];
+    
+    let html = `
+      <div class="modal fade" id="customerDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">客户详细列表</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              ${customers.length > 0 ? `
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>姓名</th>
+                        <th>公司</th>
+                        <th>邮箱</th>
+                        <th>兴趣度</th>
+                        <th>添加时间</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${customers.map(c => `
+                        <tr>
+                          <td>${c.name}</td>
+                          <td>${c.company}</td>
+                          <td>${c.email}</td>
+                          <td>
+                            <span class="badge bg-${c.interest_level === 'high' ? 'success' : c.interest_level === 'medium' ? 'warning' : 'secondary'}">
+                              ${c.interest_level === 'high' ? '高' : c.interest_level === 'medium' ? '中' : '低'}
+                            </span>
+                          </td>
+                          <td>${new Date(c.created_at).toLocaleString('zh-CN')}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : '<p class="text-muted text-center">该时间段内无新增客户</p>'}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 移除旧模态框
+    const oldModal = document.getElementById('customerDetailsModal');
+    if (oldModal) oldModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
+    
+  } catch (error) {
+    console.error('获取客户详情失败:', error);
+    showError('获取客户详情失败');
+  }
+}
+
+// 加载数据洞察
+async function loadDataInsights() {
+  try {
+    console.log('🔍 开始加载数据洞察');
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 构建查询参数
+    const params = new URLSearchParams();
+    
+    // 添加时间范围参数
+    let timeRange = currentTimeRange;
+    const customStart = document.getElementById('customStartDate').value;
+    const customEnd = document.getElementById('customEndDate').value;
+    
+    if (customStart && customEnd) {
+      timeRange = `${customStart}|${customEnd}`;
+    }
+    params.append('time_range', timeRange);
+    
+    // 如果是管理员，添加筛选参数
+    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin')) {
+      const scopeElement = document.getElementById('viewScope');
+      const scope = scopeElement ? scopeElement.value : 'all';
+      
+      if (scope === 'department') {
+        const deptId = document.getElementById('filterDepartment')?.value;
+        if (deptId) {
+          params.append('department_id', deptId);
+        }
+      } else if (scope === 'user') {
+        const userId = document.getElementById('filterUser')?.value;
+        if (userId) {
+          params.append('user_id', userId);
+        }
+      }
+    }
+    
+    const response = await fetch(`/api/statistics/data-insights?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || '数据洞察加载失败');
+    }
+    
+    const insights = data.insights || [];
+    console.log('✅ 数据洞察加载成功，共', insights.length, '条');
+    
+    renderDataInsights(insights);
+    
+  } catch (error) {
+    console.error('加载数据洞察失败:', error);
+    const container = document.getElementById('dataInsightsContainer');
+    container.innerHTML = `
+      <div class="alert alert-warning mb-0">
+        <i class="bi bi-exclamation-triangle"></i> 
+        数据洞察加载失败：${error.message}
+        <button class="btn btn-sm btn-outline-warning ms-2" onclick="loadDataInsights()">重试</button>
+      </div>
+    `;
+  }
+}
+
+// 渲染数据洞察
+function renderDataInsights(insights) {
+  const container = document.getElementById('dataInsightsContainer');
+  
+  if (insights.length === 0) {
+    container.innerHTML = `
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle"></i> 暂无数据洞察
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '<ul class="list-unstyled mb-0">';
+  
+  insights.forEach((insight, index) => {
+    // 根据趋势确定图标和颜色
+    let icon = '';
+    let color = '';
+    let bgColor = '';
+    
+    if (insight.trend === 'up') {
+      // 上升趋势 - 绿色箭头
+      icon = 'bi-arrow-up-circle-fill';
+      color = 'text-success';
+      bgColor = 'bg-success';
+    } else if (insight.trend === 'down') {
+      // 下降趋势 - 红色箭头
+      icon = 'bi-arrow-down-circle-fill';
+      color = 'text-danger';
+      bgColor = 'bg-danger';
+    } else if (insight.trend === 'volatile') {
+      // 剧烈波动 - 黄色折线
+      icon = 'bi-graph-up';
+      color = 'text-warning';
+      bgColor = 'bg-warning';
+    } else {
+      // 稳定 - 灰色圆点
+      icon = 'bi-circle-fill';
+      color = 'text-secondary';
+      bgColor = 'bg-secondary';
+    }
+    
+    html += `
+      <li class="mb-3">
+        <div class="d-flex align-items-start">
+          <div class="flex-shrink-0">
+            <i class="bi ${icon} ${color} fs-5"></i>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="mb-1 fw-bold">${insight.metric}</h6>
+            <p class="mb-0 text-muted small">${insight.description}</p>
+          </div>
+        </div>
+      </li>
+    `;
+  });
+  
+  html += '</ul>';
+  container.innerHTML = html;
+}
+
+// 加载AI行动建议
+async function loadAISuggestions() {
+  try {
+    console.log('🤖 开始加载AI行动建议');
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 构建查询参数
+    const params = new URLSearchParams();
+    
+    // 添加时间范围参数
+    let timeRange = currentTimeRange;
+    const customStart = document.getElementById('customStartDate').value;
+    const customEnd = document.getElementById('customEndDate').value;
+    
+    if (customStart && customEnd) {
+      timeRange = `${customStart}|${customEnd}`;
+    }
+    params.append('time_range', timeRange);
+    
+    // 如果是管理员，添加筛选参数
+    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin')) {
+      const scopeElement = document.getElementById('viewScope');
+      const scope = scopeElement ? scopeElement.value : 'all';
+      
+      if (scope === 'department') {
+        const deptId = document.getElementById('filterDepartment')?.value;
+        if (deptId) {
+          params.append('department_id', deptId);
+        }
+      } else if (scope === 'user') {
+        const userId = document.getElementById('filterUser')?.value;
+        if (userId) {
+          params.append('user_id', userId);
+        }
+      }
+    }
+    
+    const response = await fetch(`/api/statistics/ai-suggestions?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'AI建议加载失败');
+    }
+    
+    const suggestions = data.suggestions || [];
+    
+    console.log('✅ AI建议加载成功，共', suggestions.length, '条');
+    
+    renderAISuggestions(suggestions);
+    
+  } catch (error) {
+    console.error('加载AI建议失败:', error);
+    const container = document.getElementById('aiSuggestionsContainer');
+    container.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> 
+        AI建议加载失败：${error.message}
+        <button class="btn btn-sm btn-outline-warning ms-2" onclick="loadAISuggestions()">重试</button>
+      </div>
+    `;
+  }
+}
+
+// 渲染AI建议
+function renderAISuggestions(suggestions) {
+  const container = document.getElementById('aiSuggestionsContainer');
+  
+  if (suggestions.length === 0) {
+    container.innerHTML = `
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle"></i> AI暂无建议，数据分析中...
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '<div class="list-group list-group-flush">';
+  
+  suggestions.forEach((suggestion, index) => {
+    const priorityClass = {
+      'high': 'danger',
+      'medium': 'warning',
+      'low': 'info'
+    }[suggestion.priority] || 'secondary';
+    
+    const priorityLabel = {
+      'high': '高',
+      'medium': '中',
+      'low': '低'
+    }[suggestion.priority] || '普通';
+    
+    const icon = {
+      'high': 'exclamation-triangle-fill',
+      'medium': 'exclamation-circle-fill',
+      'low': 'info-circle-fill'
+    }[suggestion.priority] || 'circle-fill';
+    
+    html += `
+      <div class="list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <h6 class="mb-2">
+              <i class="bi bi-${icon} text-${priorityClass}"></i>
+              ${suggestion.action}
+            </h6>
+          </div>
+          <span class="badge bg-${priorityClass} ms-2">${priorityLabel}优先级</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+</script>
+

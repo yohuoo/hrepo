@@ -1,3 +1,16 @@
+<%
+// 辅助函数：检查用户是否有某个权限
+function hasPermission(code) {
+  // 超级管理员拥有所有权限
+  if (user && user.role === 'super_admin') return true;
+  
+  // 检查权限数组（userPermissions 来自 res.locals）
+  if (!userPermissions || !Array.isArray(userPermissions)) {
+    return false;
+  }
+  return userPermissions.includes(code);
+}
+%>
 <div class="sidebar">
   <div class="sidebar-header">
     <h4><i class="bi bi-diagram-3"></i> CRM系统</h4>
@@ -5,50 +18,103 @@
   
   <nav class="sidebar-nav">
     <ul class="nav flex-column">
+      <% if (hasPermission('dashboard')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">
           <i class="bi bi-house-door"></i> 控制台
         </a>
       </li>
+      <% } %>
       
+      <% if (hasPermission('contacts.list') || hasPermission('customers.list')) { %>
       <li class="nav-item mt-3">
         <h6 class="sidebar-heading">客户管理</h6>
       </li>
+      <% } %>
+      <% if (hasPermission('contacts.list')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath.startsWith('/contacts') ? 'active' : '' %>" href="/contacts">
           <i class="bi bi-person-lines-fill"></i> 联系人
         </a>
       </li>
+      <% } %>
+      <% if (hasPermission('customers.list')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath.startsWith('/customers') ? 'active' : '' %>" href="/customers">
           <i class="bi bi-people"></i> 客户
         </a>
       </li>
+      <% } %>
       
+      <% if (hasPermission('emails.inbox') || hasPermission('emails.sent') || hasPermission('emails.compose') || hasPermission('emails.templates')) { %>
       <li class="nav-item mt-3">
         <h6 class="sidebar-heading">邮件系统</h6>
       </li>
+      <% } %>
+      <% if (hasPermission('emails.inbox')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/emails/inbox' ? 'active' : '' %>" href="/emails/inbox">
           <i class="bi bi-inbox"></i> 收件箱
         </a>
       </li>
+      <% } %>
+      <% if (hasPermission('emails.sent')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/emails/sent' ? 'active' : '' %>" href="/emails/sent">
           <i class="bi bi-send"></i> 发件箱
         </a>
       </li>
+      <% } %>
+      <% if (hasPermission('emails.compose')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/emails/compose' ? 'active' : '' %>" href="/emails/compose">
           <i class="bi bi-pencil-square"></i> 写邮件
         </a>
       </li>
+      <% } %>
+      <% if (hasPermission('emails.templates')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/emails/templates' ? 'active' : '' %>" href="/emails/templates">
           <i class="bi bi-file-earmark-text"></i> 邮件模板
         </a>
       </li>
+      <% } %>
       
+      <% if (hasPermission('statistics') || hasPermission('sales') || hasPermission('reports') || hasPermission('case_studies')) { %>
+      <li class="nav-item mt-3">
+        <h6 class="sidebar-heading">数据分析</h6>
+      </li>
+      <% } %>
+      <% if (hasPermission('statistics')) { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/statistics' ? 'active' : '' %>" href="/statistics">
+          <i class="bi bi-graph-up"></i> 数据统计
+        </a>
+      </li>
+      <% } %>
+      <% if (hasPermission('sales')) { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/sales' ? 'active' : '' %>" href="/sales">
+          <i class="bi bi-cash-coin"></i> 销售数据
+        </a>
+      </li>
+      <% } %>
+      <% if (hasPermission('reports')) { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/reports' ? 'active' : '' %>" href="/reports">
+          <i class="bi bi-file-earmark-bar-graph"></i> 数据报告
+        </a>
+      </li>
+      <% } %>
+      <% if (hasPermission('case_studies')) { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/case-studies' ? 'active' : '' %>" href="/case-studies">
+          <i class="bi bi-trophy"></i> 案例总结
+        </a>
+      </li>
+      <% } %>
+      
+      <% if (hasPermission('meetings')) { %>
       <li class="nav-item mt-3">
         <h6 class="sidebar-heading">其他</h6>
       </li>
@@ -57,20 +123,41 @@
           <i class="bi bi-camera-video"></i> 会议记录
         </a>
       </li>
+      <% } %>
       
+      <% if (hasPermission('settings.departments') || hasPermission('settings.users') || hasPermission('settings.page_permissions') || hasPermission('settings.email')) { %>
       <li class="nav-item mt-3">
         <h6 class="sidebar-heading">系统设置</h6>
       </li>
+      <% } %>
+      <% if (hasPermission('settings.departments')) { %>
       <li class="nav-item">
-        <a class="nav-link <%= currentPath === '/settings' ? 'active' : '' %>" href="/settings">
-          <i class="bi bi-gear"></i> 系统设置
+        <a class="nav-link <%= currentPath === '/settings/departments' ? 'active' : '' %>" href="/settings/departments">
+          <i class="bi bi-diagram-3"></i> 部门管理
         </a>
       </li>
+      <% } %>
+      <% if (hasPermission('settings.users')) { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/settings/users' ? 'active' : '' %>" href="/settings/users">
+          <i class="bi bi-people-fill"></i> 用户管理
+        </a>
+      </li>
+      <% } %>
+      <% if (user && user.role === 'super_admin') { %>
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/settings/page-permissions' ? 'active' : '' %>" href="/settings/page-permissions">
+          <i class="bi bi-shield-lock"></i> 页面权限
+        </a>
+      </li>
+      <% } %>
+      <% if (hasPermission('settings.email')) { %>
       <li class="nav-item">
         <a class="nav-link <%= currentPath === '/settings/email' ? 'active' : '' %>" href="/settings/email">
           <i class="bi bi-envelope"></i> 邮箱配置
         </a>
       </li>
+      <% } %>
     </ul>
   </nav>
   

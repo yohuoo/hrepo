@@ -217,11 +217,15 @@ router.post('/login', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        department_id: user.department_id,
+        role: user.role,
         is_active: user.is_active,
         is_admin: user.is_admin,
+        password_changed: user.password_changed,
         created_at: user.created_at
       },
       token,
+      requires_password_change: !user.password_changed,
       message: '登录成功'
     });
   } catch (error) {

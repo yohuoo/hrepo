@@ -65,41 +65,70 @@ router.get('/', authenticateToken, async (req, res) => {
       pageSize: parseInt(pageSize)
     });
 
-    const email_history = result.email_history.map(history => ({
-      id: history.id,
-      user_id: history.user_id,
-      send_address: history.send_address,
-      receive_address: history.receive_address,
-      title: history.title,
-      content: history.content,
-      send_time: history.send_time,
-      customer_name: history.customer_name,
-      customer_id: history.customer_id,
-      contact_id: history.contact_id,
-      sender_email_binding_id: history.sender_email_binding_id,
-      email_type: history.email_type,
-      parent_email_id: history.parent_email_id,
-      status: history.status,
-      customer: history.customer ? {
-        id: history.customer.id,
-        name: history.customer.name,
-        email: history.customer.email,
-        company: history.customer.company
-      } : null,
-      contact: history.contact ? {
-        id: history.contact.id,
-        name: history.contact.name,
-        email: history.contact.email,
-        company: history.contact.company
-      } : null,
-      sender_email_binding: history.senderEmailBinding ? {
-        id: history.senderEmailBinding.id,
-        email_address: history.senderEmailBinding.email_address,
-        status: history.senderEmailBinding.status,
-        is_default: history.senderEmailBinding.is_default
-      } : null,
-      created_at: history.created_at,
-      updated_at: history.updated_at
+    // 动态查找每封邮件对应邮箱的当前身份（优先客户，其次联系人）
+    const { Customer, Contact } = require('../models');
+    const email_history = await Promise.all(result.email_history.map(async (history) => {
+      // 根据邮件类型确定对方的邮箱地址
+      const otherEmail = history.email_type === 'sent' ? history.receive_address : history.send_address;
+      
+      // 优先查找客户（当前状态）
+      let currentCustomer = await Customer.findOne({
+        where: { 
+          user_id: req.user.id,
+          email: otherEmail 
+        },
+        attributes: ['id', 'name', 'email', 'company']
+      });
+      
+      // 如果不是客户，查找联系人（当前状态）
+      let currentContact = null;
+      if (!currentCustomer) {
+        currentContact = await Contact.findOne({
+          where: { 
+            user_id: req.user.id,
+            email: otherEmail 
+          },
+          attributes: ['id', 'name', 'email', 'company']
+        });
+      }
+      
+      return {
+        id: history.id,
+        user_id: history.user_id,
+        send_address: history.send_address,
+        receive_address: history.receive_address,
+        title: history.title,
+        content: history.content,
+        send_time: history.send_time,
+        customer_name: history.customer_name,
+        customer_id: history.customer_id,
+        contact_id: history.contact_id,
+        sender_email_binding_id: history.sender_email_binding_id,
+        email_type: history.email_type,
+        parent_email_id: history.parent_email_id,
+        status: history.status,
+        // 使用当前状态（而不是历史关联）
+        customer: currentCustomer ? {
+          id: currentCustomer.id,
+          name: currentCustomer.name,
+          email: currentCustomer.email,
+          company: currentCustomer.company
+        } : null,
+        contact: currentContact ? {
+          id: currentContact.id,
+          name: currentContact.name,
+          email: currentContact.email,
+          company: currentContact.company
+        } : null,
+        sender_email_binding: history.senderEmailBinding ? {
+          id: history.senderEmailBinding.id,
+          email_address: history.senderEmailBinding.email_address,
+          status: history.senderEmailBinding.status,
+          is_default: history.senderEmailBinding.is_default
+        } : null,
+        created_at: history.created_at,
+        updated_at: history.updated_at
+      };
     }));
 
     res.json({
@@ -135,6 +164,29 @@ router.get('/:historyId', authenticateToken, async (req, res) => {
       });
     }
 
+    // 动态查找对方邮箱的当前身份
+    const { Customer, Contact } = require('../models');
+    const otherEmail = emailHistory.email_type === 'sent' ? emailHistory.receive_address : emailHistory.send_address;
+    
+    let currentCustomer = await Customer.findOne({
+      where: { 
+        user_id: req.user.id,
+        email: otherEmail 
+      },
+      attributes: ['id', 'name', 'email', 'company']
+    });
+    
+    let currentContact = null;
+    if (!currentCustomer) {
+      currentContact = await Contact.findOne({
+        where: { 
+          user_id: req.user.id,
+          email: otherEmail 
+        },
+        attributes: ['id', 'name', 'email', 'company']
+      });
+    }
+
     res.json({
       success: true,
       email_history: {
@@ -148,17 +200,18 @@ router.get('/:historyId', authenticateToken, async (req, res) => {
         customer_name: emailHistory.customer_name,
         customer_id: emailHistory.customer_id,
         contact_id: emailHistory.contact_id,
-        customer: emailHistory.customer ? {
-          id: emailHistory.customer.id,
-          name: emailHistory.customer.name,
-          email: emailHistory.customer.email,
-          company: emailHistory.customer.company
+        // 使用当前状态
+        customer: currentCustomer ? {
+          id: currentCustomer.id,
+          name: currentCustomer.name,
+          email: currentCustomer.email,
+          company: currentCustomer.company
         } : null,
-        contact: emailHistory.contact ? {
-          id: emailHistory.contact.id,
-          name: emailHistory.contact.name,
-          email: emailHistory.contact.email,
-          company: emailHistory.contact.company
+        contact: currentContact ? {
+          id: currentContact.id,
+          name: currentContact.name,
+          email: currentContact.email,
+          company: currentContact.company
         } : null,
         created_at: emailHistory.created_at,
         updated_at: emailHistory.updated_at

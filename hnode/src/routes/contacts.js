@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { checkPagePermission } = require('../middleware/permission');
 const ContactService = require('../services/ContactService');
 
 const contactService = new ContactService();
 
-// 获取联系人列表
+// 获取联系人列表（无需额外权限检查，页面访问已检查contacts.list）
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const {
@@ -67,7 +68,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // 创建联系人
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, checkPagePermission('contacts.create'), async (req, res) => {
   try {
     const contact = await contactService.createContact(req.body, req.user.id);
     
@@ -101,7 +102,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // 获取单个联系人
-router.get('/:contactId', authenticateToken, async (req, res) => {
+router.get('/:contactId', authenticateToken, checkPagePermission('contacts.view'), async (req, res) => {
   try {
     const contact = await contactService.getContact(parseInt(req.params.contactId), req.user.id);
     
@@ -141,7 +142,7 @@ router.get('/:contactId', authenticateToken, async (req, res) => {
 });
 
 // 更新联系人
-router.put('/:contactId', authenticateToken, async (req, res) => {
+router.put('/:contactId', authenticateToken, checkPagePermission('contacts.edit'), async (req, res) => {
   try {
     const contact = await contactService.updateContact(
       parseInt(req.params.contactId), 
@@ -186,7 +187,7 @@ router.put('/:contactId', authenticateToken, async (req, res) => {
 });
 
 // 删除联系人
-router.delete('/:contactId', authenticateToken, async (req, res) => {
+router.delete('/:contactId', authenticateToken, checkPagePermission('contacts.delete'), async (req, res) => {
   try {
     const success = await contactService.deleteContact(parseInt(req.params.contactId), req.user.id);
     

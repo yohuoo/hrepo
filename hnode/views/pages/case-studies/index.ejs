@@ -1,0 +1,554 @@
+<!-- 页面标题和面包屑 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">案例总结</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">
+      <i class="bi bi-trophy"></i> 案例总结
+      <small class="text-muted ms-2">分享成功经验</small>
+    </h1>
+  </div>
+</div>
+
+<!-- 操作栏 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-center">
+      <div class="col-lg-9">
+        <div class="alert alert-info mb-0">
+          <i class="bi bi-info-circle"></i> 
+          <strong>提示：</strong>只有标记为"已成交"的客户才能生成案例总结。AI将分析客户的邮件往来、销售记录和客户报告，生成专业的案例分析。
+        </div>
+      </div>
+      <div class="col-lg-3">
+        <button class="btn btn-primary w-100" onclick="showGenerateCaseModal()">
+          <i class="bi bi-stars me-1"></i>生成新案例
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 案例列表 -->
+<div class="row" id="caseStudiesContainer">
+  <div class="col-12 text-center p-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">加载中...</span>
+    </div>
+  </div>
+</div>
+
+<!-- 分页 -->
+<div class="card mt-4" id="paginationCard" style="display: none;">
+  <div class="card-footer">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <span id="caseCount">共 0 个案例</span>
+      </div>
+      <div class="col-md-6">
+        <nav>
+          <ul class="pagination pagination-sm mb-0 justify-content-end" id="pagination"></ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 生成案例模态框 -->
+<div class="modal fade" id="generateCaseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-stars"></i> 生成案例总结</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">选择已成交客户</label>
+          <select class="form-select" id="dealCustomerSelect">
+            <option value="">加载中...</option>
+          </select>
+        </div>
+        <div class="alert alert-warning">
+          <i class="bi bi-clock-history"></i> AI生成案例需要15-30秒，请耐心等待
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="generateCase()">
+          <i class="bi bi-stars"></i> 开始生成
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 案例详情模态框 -->
+<div class="modal fade" id="caseDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-gradient-primary text-white">
+        <h5 class="modal-title" id="caseDetailTitle">案例详情</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="caseDetailBody">
+        <!-- 案例详情将动态加载 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+let currentUser = null;
+
+// 页面加载
+document.addEventListener('DOMContentLoaded', async () => {
+  // 获取当前用户信息
+  const userStr = localStorage.getItem('currentUser');
+  if (userStr) {
+    currentUser = JSON.parse(userStr);
+  }
+  
+  await loadCaseStudies();
+});
+
+// 加载案例列表
+async function loadCaseStudies(page = 1) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/case-studies?page=${page}&page_size=12`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('加载失败');
+      return;
+    }
+    
+    const caseStudies = data.caseStudies || [];
+    currentPage = data.page;
+    totalPages = data.totalPages;
+    
+    renderCaseStudies(caseStudies);
+    renderPagination(data.total);
+    
+  } catch (error) {
+    console.error('加载案例列表失败:', error);
+    showError('加载失败');
+  }
+}
+
+// 渲染案例列表
+function renderCaseStudies(caseStudies) {
+  const container = document.getElementById('caseStudiesContainer');
+  
+  if (caseStudies.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-warning">
+          <i class="bi bi-inbox"></i> 暂无案例，点击"生成新案例"开始创建
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  caseStudies.forEach(caseStudy => {
+    const customer = caseStudy.customer || {};
+    const user = caseStudy.user || {};
+    const generator = caseStudy.generator || {};
+    
+    html += `
+      <div class="col-lg-6 col-xl-4 mb-4">
+        <div class="card h-100 shadow-sm hover-shadow">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h5 class="card-title mb-0">
+                <i class="bi bi-trophy text-warning"></i> ${caseStudy.title || '未命名案例'}
+              </h5>
+              <span class="badge bg-success">已成交</span>
+            </div>
+            
+            <div class="mb-3">
+              <p class="text-muted mb-1"><i class="bi bi-building"></i> <strong>${customer.company || '-'}</strong></p>
+              <p class="text-muted mb-1"><i class="bi bi-person"></i> ${customer.name || '-'}</p>
+              <p class="text-muted mb-1"><i class="bi bi-envelope"></i> ${customer.email || '-'}</p>
+            </div>
+            
+            <hr>
+            
+            <div class="mb-3">
+              <small class="text-muted">
+                <i class="bi bi-person-badge"></i> 归属：${user.username || '-'}<br>
+                <i class="bi bi-robot"></i> 生成者：${generator.username || '-'}<br>
+                <i class="bi bi-clock"></i> ${new Date(caseStudy.created_at).toLocaleString('zh-CN')}
+              </small>
+            </div>
+            
+            <div class="d-grid gap-2">
+              <button class="btn btn-outline-primary btn-sm" onclick="viewCaseDetail(${caseStudy.id})">
+                <i class="bi bi-eye"></i> 查看详情
+              </button>
+              ${(currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || caseStudy.generated_by === currentUser.id)) ? `
+              <button class="btn btn-outline-danger btn-sm" onclick="deleteCase(${caseStudy.id})">
+                <i class="bi bi-trash"></i> 删除
+              </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+// 渲染分页
+function renderPagination(total) {
+  const paginationCard = document.getElementById('paginationCard');
+  const countSpan = document.getElementById('caseCount');
+  const pagination = document.getElementById('pagination');
+  
+  if (total === 0) {
+    paginationCard.style.display = 'none';
+    return;
+  }
+  
+  paginationCard.style.display = 'block';
+  countSpan.textContent = `共 ${total} 个案例`;
+  
+  let html = '';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadCaseStudies(${currentPage - 1}); return false;">上一页</a>
+    </li>
+  `;
+  
+  // 页码
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      html += `
+        <li class="page-item ${i === currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="loadCaseStudies(${i}); return false;">${i}</a>
+        </li>
+      `;
+    } else if (i === currentPage - 3 || i === currentPage + 3) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadCaseStudies(${currentPage + 1}); return false;">下一页</a>
+    </li>
+  `;
+  
+  pagination.innerHTML = html;
+}
+
+// 显示生成案例模态框
+async function showGenerateCaseModal() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    // 获取已成交的客户列表
+    const response = await fetch('/api/customers?page_size=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取客户列表失败');
+      return;
+    }
+    
+    const dealCustomers = (data.customers || []).filter(c => c.deal_status === '已成交');
+    
+    if (dealCustomers.length === 0) {
+      showWarning('暂无已成交的客户，请先在客户管理中将客户标记为"已成交"');
+      return;
+    }
+    
+    const select = document.getElementById('dealCustomerSelect');
+    select.innerHTML = '<option value="">请选择客户...</option>';
+    dealCustomers.forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.name} - ${c.company}</option>`;
+    });
+    
+    new bootstrap.Modal(document.getElementById('generateCaseModal')).show();
+    
+  } catch (error) {
+    console.error('加载客户列表失败:', error);
+    showError('加载失败');
+  }
+}
+
+// 生成案例
+async function generateCase() {
+  console.log('🎯 开始生成案例');
+  
+  const customerId = document.getElementById('dealCustomerSelect').value;
+  console.log('📋 选中的客户ID:', customerId);
+  
+  if (!customerId) {
+    console.warn('⚠️ 未选择客户');
+    showWarning('请选择客户');
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    console.log('🔑 Token存在:', !!token);
+    
+    // 禁用按钮防止重复点击
+    const generateBtn = event.target;
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>生成中...';
+    
+    console.log('📤 发送生成请求...');
+    const response = await fetch(`/api/case-studies/generate/${customerId}`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('📥 收到响应:', response.status);
+    const data = await response.json();
+    console.log('📦 响应数据:', data);
+    
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('generateCaseModal'));
+    if (modal) {
+      modal.hide();
+    }
+    
+    if (data.success) {
+      showSuccess('案例生成成功！');
+      loadCaseStudies(currentPage);
+    } else {
+      showError(data.message || '生成失败');
+    }
+  } catch (error) {
+    console.error('❌ 生成案例失败:', error);
+    showError('生成失败: ' + error.message);
+  } finally {
+    // 恢复按钮状态
+    const generateBtn = document.querySelector('#generateCaseModal .btn-primary');
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="bi bi-stars"></i> 开始生成';
+    }
+  }
+}
+
+// 查看案例详情
+async function viewCaseDetail(caseStudyId) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/case-studies/${caseStudyId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取案例详情失败');
+      return;
+    }
+    
+    const caseStudy = data.caseStudy;
+    const customer = caseStudy.customer || {};
+    
+    document.getElementById('caseDetailTitle').textContent = caseStudy.title || '案例详情';
+    
+    // 渲染Markdown
+    const summaryHtml = marked.parse(caseStudy.summary || '');
+    
+    const detailBody = document.getElementById('caseDetailBody');
+    detailBody.innerHTML = `
+      <div class="mb-4">
+        <h4><i class="bi bi-building"></i> 客户信息</h4>
+        <div class="card bg-light">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4"><strong>公司：</strong>${customer.company || '-'}</div>
+              <div class="col-md-4"><strong>联系人：</strong>${customer.name || '-'}</div>
+              <div class="col-md-4"><strong>邮箱：</strong>${customer.email || '-'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      ${caseStudy.customer_info ? `
+      <div class="mb-4">
+        <h5><i class="bi bi-info-circle"></i> 客户基本信息</h5>
+        <div class="card">
+          <div class="card-body">
+            ${caseStudy.customer_info}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${caseStudy.sales_techniques ? `
+      <div class="mb-4">
+        <h5><i class="bi bi-lightbulb"></i> 销售技巧</h5>
+        <div class="card border-primary">
+          <div class="card-body">
+            ${caseStudy.sales_techniques}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      
+      ${caseStudy.communication_highlights ? `
+      <div class="mb-4">
+        <h5><i class="bi bi-chat-dots"></i> 沟通亮点</h5>
+        <div class="card border-success">
+          <div class="card-body">
+            ${caseStudy.communication_highlights}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      
+      <div class="mb-4">
+        <h5><i class="bi bi-file-text"></i> 完整总结</h5>
+        <div class="card border-warning">
+          <div class="card-body markdown-content">
+            ${summaryHtml}
+          </div>
+        </div>
+      </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('caseDetailModal')).show();
+    
+  } catch (error) {
+    console.error('获取案例详情失败:', error);
+    showError('获取失败');
+  }
+}
+
+// 删除案例
+async function deleteCase(caseStudyId) {
+  if (!confirm('确定要删除这个案例吗？删除后无法恢复。')) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/case-studies/${caseStudyId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('案例已删除');
+      loadCaseStudies(currentPage);
+    } else {
+      showError(data.message || '删除失败');
+    }
+  } catch (error) {
+    console.error('删除案例失败:', error);
+    showError('删除失败');
+  }
+}
+
+// 提示函数
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showInfo(message) {
+  showToast(message, 'info');
+}
+
+function showToast(message, type = 'info') {
+  // 创建toast元素
+  const toastContainer = document.getElementById('toastContainer') || document.body;
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // 3秒后自动移除
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
+}
+</script>
+
+<style>
+.hover-shadow {
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 2rem;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content code {
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+}
+</style>
+

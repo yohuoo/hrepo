@@ -25,6 +25,12 @@ const emailHistoryRoutes = require('./routes/emailHistory');
 const zoomMeetingsRoutes = require('./routes/zoomMeetings');
 const customerAnalysisRoutes = require('./routes/customerAnalysis');
 const emailsRoutes = require('./routes/emails');
+const departmentsRoutes = require('./routes/departments');
+const usersRoutes = require('./routes/users');
+const salesRoutes = require('./routes/sales');
+const contractsRoutes = require('./routes/contracts');
+const caseStudiesRoutes = require('./routes/caseStudies');
+const pagePermissionsRoutes = require('./routes/pagePermissions');
 const viewsRoutes = require('./routes/views');
 
 const app = express();
@@ -123,6 +129,16 @@ app.use('/api/email-history', emailHistoryRoutes);
 app.use('/api/zoom-meetings', zoomMeetingsRoutes);
 app.use('/api/customer-analysis', customerAnalysisRoutes);
 app.use('/api/emails', emailsRoutes);
+app.use('/api/departments', departmentsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/contracts', contractsRoutes);
+app.use('/api/case-studies', caseStudiesRoutes);
+app.use('/api/page-permissions', pagePermissionsRoutes);
+const statisticsRoutes = require('./routes/statistics');
+const reportsRoutes = require('./routes/reports');
+app.use('/api/statistics', statisticsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // 视图路由（放在API路由之后，但在404之前）
 app.use('/', viewsRoutes);

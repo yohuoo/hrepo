@@ -24,9 +24,11 @@
         </div>
       </div>
       <div class="col-lg-3 col-md-4">
+        <% if (typeof userPermissions !== 'undefined' && userPermissions.includes('customers.create')) { %>
         <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
           <i class="bi bi-plus-lg me-1"></i>新增客户
         </button>
+        <% } %>
       </div>
     </div>
   </div>
@@ -45,14 +47,15 @@
             <th>往来邮件次数</th>
             <th>沟通进度</th>
             <th>客户兴趣度</th>
+            <th>成交状态</th>
+            <th>合同管理</th>
             <th>最近沟通时间</th>
-            <th>当前进度</th>
             <th width="100">操作</th>
           </tr>
         </thead>
         <tbody id="customerTableBody">
           <tr>
-            <td colspan="9" class="text-center p-5">
+            <td colspan="10" class="text-center p-5">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">加载中...</span>
               </div>
@@ -248,7 +251,120 @@
   </div>
 </div>
 
+<!-- 合同录入模态框 -->
+<div class="modal fade" id="contractModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-text"></i> 录入合同</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-robot"></i> <strong>AI已为您分析：</strong>以下信息基于客户的邮件往来和销售记录生成，请核对后保存
+        </div>
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i> <strong>提示：</strong>保存合同后，系统将自动把客户标记为"已成交"状态
+        </div>
+        
+        <form id="contractForm">
+          <input type="hidden" id="contractId">
+          <input type="hidden" id="contractCustomerId">
+          
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">合同编号</label>
+              <input type="text" class="form-control" id="contractNumber" placeholder="选填">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">甲方名称（买方） <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="partyAName" required placeholder="客户公司">
+              <small class="text-muted">客户公司</small>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">乙方名称（卖方）</label>
+              <input type="text" class="form-control" id="partyBName" value="浩天药业有限公司" placeholder="我方公司">
+              <small class="text-muted">我方公司</small>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">采购商品 <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="purchaseProduct" rows="2" required placeholder="产品名称及规格"></textarea>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">采购数量</label>
+              <input type="number" class="form-control" id="purchaseQuantity" step="0.01" placeholder="0.00">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">合同金额</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="contractAmount" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">币种</label>
+              <select class="form-select" id="contractCurrency">
+                <option value="USD">USD</option>
+                <option value="CNY">CNY</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">预计交付时间</label>
+            <input type="date" class="form-control" id="estimatedDeliveryDate">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="contractNotes" rows="3" placeholder="其他说明"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveContract()">
+          <i class="bi bi-check-lg"></i> 保存合同
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 合同列表模态框 -->
+<div class="modal fade" id="contractListModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-text"></i> 合同列表</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="contractListBody">
+        <!-- 合同列表将通过JavaScript动态加载 -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// 用户权限（从后端传递）
+// eslint-disable-next-line
+const userPermissions = <%- JSON.stringify(userPermissions || []) %>;
+console.log('👤 用户权限:', userPermissions);
+
+// 权限检查辅助函数
+function hasPermission(code) {
+  return userPermissions.includes(code);
+}
+
 let currentPage = 1;
 let currentFilters = {};
 let pageSize = 20;
@@ -305,6 +421,12 @@ async function loadCustomers(page = 1) {
       return;
     }
     
+    // 详细查看第一个客户的所有字段
+    if (data.customers && data.customers.length > 0) {
+      console.log('🔍 第一个客户的所有字段:', Object.keys(data.customers[0]));
+      console.log('🔍 deal_status值:', data.customers[0].deal_status);
+    }
+    
     currentPage = page;
     renderCustomerTable(data.customers || []);
     renderPagination(data.page, data.total_pages);
@@ -341,16 +463,31 @@ function renderCustomerTable(customers) {
   }
   
   let html = '';
-  customers.forEach(customer => {
+  customers.forEach((customer, index) => {
     const progressBadge = getProgressBadge(customer.communication_progress);
     const interestBadge = getInterestBadge(customer.interest_level);
+    
+    // 调试日志：打印第一个客户的数据
+    if (index === 0) {
+      console.log('📊 第一个客户数据示例:', {
+        id: customer.id,
+        name: customer.name,
+        deal_status: customer.deal_status,
+        contract_count: customer.contract_count
+      });
+    }
     
     html += `
       <tr class="customer-row" data-customer-id="${customer.id}">
         <td>
-          <a href="#" class="text-primary fw-bold" onclick="viewCustomerDetail(${customer.id})">
-            ${customer.name}
-          </a>
+          <div class="d-flex align-items-center">
+            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewCustomerDetail(${customer.id});" title="点击查看客户详情">
+              ${getInitials(customer.name)}
+            </div>
+            <div>
+              <div class="fw-bold">${customer.name}</div>
+            </div>
+          </div>
         </td>
         <td>${customer.email}</td>
         <td>${customer.company || '-'}</td>
@@ -369,26 +506,64 @@ function renderCustomerTable(customers) {
             </ul>
           </div>
         </td>
-        <td>${customer.last_communication_time ? formatDate(customer.last_communication_time) : '-'}</td>
-        <td class="text-truncate" style="max-width: 200px;" title="${customer.current_progress || ''}">
-          ${customer.current_progress || '-'}
+        <td>
+          <div class="dropdown">
+            <button class="btn btn-sm ${customer.deal_status === '已成交' ? 'btn-success' : 'btn-outline-secondary'} dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              ${customer.deal_status || '未成交'}
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); event.stopPropagation(); updateDealStatus(${customer.id}, '未成交'); return false;">未成交</a></li>
+              <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); event.stopPropagation(); updateDealStatus(${customer.id}, '已成交'); return false;">已成交</a></li>
+            </ul>
+          </div>
         </td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            ${customer.deal_status === '已成交' ? `
+              <button class="btn btn-outline-primary" 
+                      onclick="event.stopPropagation(); openContractModal(${customer.id})">
+                <i class="bi bi-file-earmark-plus"></i> 录入合同
+              </button>
+            ` : `
+              <button class="btn btn-outline-secondary" disabled title="请先将客户标记为已成交">
+                <i class="bi bi-file-earmark-plus"></i> 录入合同
+              </button>
+            `}
+            ${customer.contract_count && customer.contract_count > 0 ? `
+              <button class="btn btn-outline-info" 
+                      onclick="event.stopPropagation(); showContractList(${customer.id})">
+                <i class="bi bi-list-ul"></i> 合同列表(${customer.contract_count})
+              </button>
+            ` : `
+              <button class="btn btn-outline-secondary" disabled title="暂无合同">
+                <i class="bi bi-list-ul"></i> 合同列表
+              </button>
+            `}
+          </div>
+        </td>
+        <td>${customer.last_communication_time ? formatDate(customer.last_communication_time) : '-'}</td>
         <td>
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
               <i class="bi bi-three-dots-vertical"></i>
             </button>
             <ul class="dropdown-menu">
+              ${hasPermission('customers.view') ? `
               <li><a class="dropdown-item" href="#" onclick="viewCustomerDetail(${customer.id})">
                 <i class="bi bi-eye"></i> 查看详情
               </a></li>
+              ` : ''}
+              ${hasPermission('customers.edit') ? `
               <li><a class="dropdown-item" href="#" onclick="editCustomer(${customer.id})">
                 <i class="bi bi-pencil"></i> 编辑
               </a></li>
-              <li><hr class="dropdown-divider"></li>
+              ` : ''}
+              ${(hasPermission('customers.view') || hasPermission('customers.edit')) && hasPermission('customers.delete') ? '<li><hr class="dropdown-divider"></li>' : ''}
+              ${hasPermission('customers.delete') ? `
               <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer(${customer.id})">
                 <i class="bi bi-trash"></i> 删除
               </a></li>
+              ` : ''}
             </ul>
           </div>
         </td>
@@ -734,6 +909,12 @@ function parseArrayField(field, fieldName = 'unknown') {
 }
 
 function renderCustomerDetailModal(customer, analysis, emails, meetings = [], isLoading = false) {
+  // 转换字面的 \n 为实际换行符
+  const convertNewlines = (text) => {
+    if (!text) return '';
+    return text.replace(/\\n/g, '\n');
+  };
+  
   // 解析分析数据中的数组字段
   let opportunities = [];
   let risks = [];
@@ -745,6 +926,57 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
     risks = parseArrayField(analysis.risks, 'risks');
     strategicSuggestions = parseArrayField(analysis.strategic_suggestions, 'strategic_suggestions');
     nextActions = parseArrayField(analysis.next_actions, 'next_actions');
+    
+    // 转换当前沟通进度中的换行符
+    if (analysis.current_progress) {
+      analysis.current_progress = convertNewlines(analysis.current_progress);
+    }
+    
+    // 转换数组字段中的换行符
+    opportunities = opportunities.map(item => {
+      if (typeof item === 'object') {
+        return {
+          ...item,
+          description: convertNewlines(item.description || ''),
+          title: convertNewlines(item.title || '')
+        };
+      }
+      return convertNewlines(String(item));
+    });
+    
+    risks = risks.map(item => {
+      if (typeof item === 'object') {
+        return {
+          ...item,
+          description: convertNewlines(item.description || ''),
+          title: convertNewlines(item.title || '')
+        };
+      }
+      return convertNewlines(String(item));
+    });
+    
+    strategicSuggestions = strategicSuggestions.map(item => {
+      if (typeof item === 'object') {
+        return {
+          ...item,
+          description: convertNewlines(item.description || ''),
+          title: convertNewlines(item.title || ''),
+          expected_outcome: convertNewlines(item.expected_outcome || '')
+        };
+      }
+      return convertNewlines(String(item));
+    });
+    
+    nextActions = nextActions.map(item => {
+      if (typeof item === 'object') {
+        return {
+          ...item,
+          action: convertNewlines(item.action || item.title || item.name || ''),
+          description: convertNewlines(item.description || '')
+        };
+      }
+      return convertNewlines(String(item));
+    });
   }
   
   // 预处理会议数据，添加摘要预览
@@ -804,7 +1036,7 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
                 <i class="bi bi-chat-dots text-primary me-2"></i>
                 <strong>当前沟通进度</strong>
               </div>
-              <p class="mb-0">${analysis.current_progress || '暂无分析数据'}</p>
+              <p class="mb-0" style="white-space: pre-line;">${analysis.current_progress || '暂无分析数据'}</p>
             </div>
           </div>
           
@@ -837,10 +1069,10 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
                             
                             return `<li class="mb-3">
                               <strong>• ${opp.title}</strong> ${priorityBadge}
-                              <br><small class="text-muted">${opp.description || ''}</small>
+                              <br><small class="text-muted" style="white-space: pre-line;">${opp.description || ''}</small>
                             </li>`;
                           }
-                          return `<li>• ${opp}</li>`;
+                          return `<li style="white-space: pre-line;">• ${opp}</li>`;
                         }).join('') 
                       : '<li class="text-muted">暂无数据</li>'}
                   </ul>
@@ -851,9 +1083,9 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
                     ${risks.length > 0 
                       ? risks.map(risk => {
                           if (typeof risk === 'object' && risk.title) {
-                            return `<li><strong>• ${risk.title}</strong>${risk.severity ? ` <span class="badge bg-danger">${risk.severity}</span>` : ''}<br><small class="text-muted">${risk.description || ''}</small></li>`;
+                            return `<li class="mb-3"><strong>• ${risk.title}</strong>${risk.severity ? ` <span class="badge bg-danger">${risk.severity}</span>` : ''}<br><small class="text-muted" style="white-space: pre-line;">${risk.description || ''}</small></li>`;
                           }
-                          return `<li>• ${risk}</li>`;
+                          return `<li style="white-space: pre-line;">• ${risk}</li>`;
                         }).join('') 
                       : '<li class="text-muted">暂无数据</li>'}
                   </ul>
@@ -873,9 +1105,9 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
                 ${strategicSuggestions.length > 0 
                   ? strategicSuggestions.map(rec => {
                       if (typeof rec === 'object' && rec.title) {
-                        return `<li class="mb-3"><strong>• ${rec.title}</strong><br><small class="text-muted">${rec.description || ''}</small>${rec.expected_outcome ? `<br><small class="text-success"><i class="bi bi-check-circle"></i> 预期结果: ${rec.expected_outcome}</small>` : ''}</li>`;
+                        return `<li class="mb-3"><strong>• ${rec.title}</strong><br><small class="text-muted" style="white-space: pre-line;">${rec.description || ''}</small>${rec.expected_outcome ? `<br><small class="text-success" style="white-space: pre-line;"><i class="bi bi-check-circle"></i> 预期结果: ${rec.expected_outcome}</small>` : ''}</li>`;
                       }
-                      return `<li>• ${rec}</li>`;
+                      return `<li style="white-space: pre-line;">• ${rec}</li>`;
                     }).join('') 
                   : '<li class="text-muted">暂无数据</li>'}
               </ul>
@@ -911,10 +1143,11 @@ function renderCustomerDetailModal(customer, analysis, emails, meetings = [], is
                         
                         return `<li class="mb-2">
                           <strong>• ${action}</strong> ${priorityBadge}
+                          ${step.description ? `<br><small class="text-muted" style="white-space: pre-line;">${step.description}</small>` : ''}
                           ${deadline ? `<br><small class="text-muted"><i class="bi bi-calendar"></i> ${deadline}</small>` : ''}
                         </li>`;
                       }
-                      return `<li>• ${step}</li>`;
+                      return `<li style="white-space: pre-line;">• ${step}</li>`;
                     }).join('') 
                   : '<li class="text-muted">暂无数据</li>'}
               </ul>
@@ -1054,6 +1287,9 @@ async function showEmailDetailInCustomer(emailId) {
     
     const email = data.email_history;
     
+    // 保存邮件数据到全局变量（用于翻译）
+    window.currentEmailInDetail = email;
+    
     // 创建邮件详情模态框
     const modalHTML = `
       <div class="modal fade" id="emailDetailInCustomerModal" tabindex="-1">
@@ -1065,7 +1301,17 @@ async function showEmailDetailInCustomer(emailId) {
             </div>
             <div class="modal-body">
               <div class="mb-3">
-                <strong>主题:</strong> ${email.title || '无主题'}
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong>主题:</strong>
+                  <div class="btn-group btn-group-sm" id="titleTranslationToggle" style="display: none;">
+                    <button class="btn btn-outline-secondary btn-sm active" onclick="showOriginalContent()">原文</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="showTranslatedContent()">译文</button>
+                  </div>
+                </div>
+                <div class="mt-1">
+                  <span id="emailDetailTitle" class="text-primary">${email.title || '无主题'}</span>
+                  <span id="emailDetailTitleTranslation" class="text-info" style="display: none;"><!-- 翻译标题 --></span>
+                </div>
               </div>
               <div class="mb-3">
                 <strong>发件人:</strong> ${email.send_address}
@@ -1084,13 +1330,17 @@ async function showEmailDetailInCustomer(emailId) {
               </div>
               <hr>
               <div class="mb-3">
-                <strong>内容:</strong>
-                <div class="mt-2 p-3 bg-light rounded" style="white-space: pre-wrap;">
-                  ${email.content || '(无内容)'}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <strong>内容:</strong>
                 </div>
+                <div class="mt-2 p-3 bg-light rounded" style="white-space: pre-line;" id="emailDetailContent">${email.content ? email.content.trim() : '(无内容)'}</div>
+                <div class="mt-2 p-3 bg-info bg-opacity-10 rounded" style="white-space: pre-line; display: none;" id="emailDetailTranslation"></div>
               </div>
             </div>
             <div class="modal-footer">
+              <button type="button" class="btn btn-info" onclick="translateEmailInDetail()" id="translateEmailBtn">
+                <i class="bi bi-translate"></i> 翻译邮件
+              </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
             </div>
           </div>
@@ -1626,6 +1876,16 @@ function formatDate(dateString) {
   return date.toLocaleDateString('zh-CN');
 }
 
+// 获取姓名首字母
+function getInitials(name) {
+  if (!name) return '?';
+  const names = name.split(' ');
+  if (names.length >= 2) {
+    return (names[0][0] + names[1][0]).toUpperCase();
+  }
+  return name[0].toUpperCase();
+}
+
 function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
@@ -1728,4 +1988,437 @@ function showToast(message, type) {
   // 显示提示消息
   console.log(`${type}: ${message}`);
 }
+
+// ==================== 合同管理相关函数 ====================
+
+// 更新成交状态
+async function updateDealStatus(customerId, dealStatus) {
+  console.log('🔵 更新成交状态，客户ID:', customerId, '新状态:', dealStatus);
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    console.log('📤 发送更新请求...');
+    
+    const response = await fetch(`/api/customers/${customerId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ deal_status: dealStatus })
+    });
+    
+    const data = await response.json();
+    
+    console.log('📥 响应数据:', data);
+    
+    if (data.success) {
+      console.log('✅ 成交状态更新成功');
+      showSuccess(`成交状态已更新为：${dealStatus}`);
+      await loadCustomers(currentPage);
+    } else {
+      console.error('❌ 更新失败:', data.message);
+      showError(data.message || '更新失败');
+    }
+  } catch (error) {
+    console.error('❌ 更新成交状态失败:', error);
+    showError('更新失败');
+  }
+}
+
+// 打开合同录入模态框
+async function openContractModal(customerId) {
+  console.log('🔵 打开合同录入模态框，客户ID:', customerId);
+  
+  try {
+    window.currentContractCustomerId = customerId;
+    
+    // 重置表单
+    const contractForm = document.getElementById('contractForm');
+    if (!contractForm) {
+      console.error('❌ 找不到contractForm元素');
+      showError('表单加载失败');
+      return;
+    }
+    
+    contractForm.reset();
+    document.getElementById('contractId').value = '';
+    document.getElementById('contractCustomerId').value = customerId;
+    
+    console.log('✅ 表单已重置');
+    
+    // 调用AI生成合同建议
+    showInfo('AI正在分析客户信息...');
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`/api/contracts/ai-suggest/${customerId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.suggestion) {
+      // 填充AI建议的数据
+      const suggestion = data.suggestion;
+      document.getElementById('partyAName').value = suggestion.party_a_name || '';
+      document.getElementById('partyBName').value = suggestion.party_b_name || '浩天药业有限公司';
+      document.getElementById('purchaseProduct').value = suggestion.purchase_product || '';
+      document.getElementById('purchaseQuantity').value = suggestion.purchase_quantity || '';
+      document.getElementById('estimatedDeliveryDate').value = suggestion.estimated_delivery_date || '';
+      document.getElementById('contractAmount').value = suggestion.contract_amount || '';
+      document.getElementById('contractCurrency').value = suggestion.currency || 'USD';
+      
+      showSuccess('AI建议已加载，您可以继续编辑');
+    } else {
+      // 如果AI建议失败，至少填充默认的乙方名称
+      document.getElementById('partyBName').value = '浩天药业有限公司';
+    }
+    
+    // 显示模态框
+    new bootstrap.Modal(document.getElementById('contractModal')).show();
+    
+  } catch (error) {
+    console.error('打开合同模态框失败:', error);
+    showError('加载AI建议失败，请手动填写');
+    // 即使AI失败，也显示模态框让用户手动填写
+    new bootstrap.Modal(document.getElementById('contractModal')).show();
+  }
+}
+
+// 保存合同
+async function saveContract() {
+  console.log('🔵 点击保存合同按钮');
+  
+  try {
+    const contractId = document.getElementById('contractId').value;
+    const customerId = document.getElementById('contractCustomerId').value;
+    const contractNumber = document.getElementById('contractNumber').value.trim();
+    const partyAName = document.getElementById('partyAName').value.trim();
+    const partyBName = document.getElementById('partyBName').value.trim();
+    
+    console.log('📝 合同数据:', {
+      customerId,
+      partyAName,
+      partyBName
+    });
+    const purchaseProduct = document.getElementById('purchaseProduct').value.trim();
+    const purchaseQuantity = document.getElementById('purchaseQuantity').value;
+    const estimatedDeliveryDate = document.getElementById('estimatedDeliveryDate').value;
+    const contractAmount = document.getElementById('contractAmount').value;
+    const contractCurrency = document.getElementById('contractCurrency').value;
+    const contractNotes = document.getElementById('contractNotes').value.trim();
+    
+    if (!partyAName || !purchaseProduct) {
+      console.warn('⚠️ 表单验证失败：甲方名称或采购商品为空');
+      showWarning('请填写甲方名称和采购商品');
+      return;
+    }
+    
+    console.log('✅ 表单验证通过');
+    
+    const token = localStorage.getItem('authToken');
+    const url = contractId ? `/api/contracts/${contractId}` : '/api/contracts/';
+    const method = contractId ? 'PUT' : 'POST';
+    
+    console.log('📤 准备发送请求:', { url, method });
+    
+    const requestBody = {
+      customer_id: parseInt(customerId),
+      contract_number: contractNumber,
+      party_a_name: partyAName,
+      party_b_name: partyBName || '浩天药业有限公司',
+      purchase_product: purchaseProduct,
+      purchase_quantity: parseFloat(purchaseQuantity) || 0,
+      estimated_delivery_date: estimatedDeliveryDate || null,
+      contract_amount: parseFloat(contractAmount) || 0,
+      currency: contractCurrency,
+      notes: contractNotes
+    };
+    
+    console.log('📦 请求体:', requestBody);
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const data = await response.json();
+    
+    console.log('📥 响应数据:', data);
+    
+    if (data.success) {
+      console.log('✅ 合同保存成功，准备刷新客户列表');
+      showSuccess(data.message || '合同保存成功');
+      bootstrap.Modal.getInstance(document.getElementById('contractModal')).hide();
+      await loadCustomers(currentPage);
+      console.log('✅ 客户列表已刷新');
+    } else {
+      console.error('❌ 保存失败:', data.message);
+      showError(data.message || '保存失败');
+    }
+  } catch (error) {
+    console.error('保存合同失败:', error);
+    showError('保存失败');
+  }
+}
+
+// 显示合同列表
+async function showContractList(customerId) {
+  console.log('🔵 显示合同列表，客户ID:', customerId);
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/contracts/customer/${customerId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取合同列表失败');
+      return;
+    }
+    
+    const contracts = data.contracts || [];
+    
+    // 渲染合同列表
+    let html = '';
+    if (contracts.length === 0) {
+      html = '<p class="text-muted text-center p-3">暂无合同</p>';
+    } else {
+      html = '<div class="list-group">';
+      contracts.forEach(contract => {
+        html += `
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <h6 class="mb-2">
+                  <span class="badge bg-info me-2">甲方</span>${contract.party_a_name || '(未命名)'}
+                  <span class="ms-3 badge bg-success me-2">乙方</span>${contract.party_b_name || '浩天药业有限公司'}
+                </h6>
+                <p class="mb-1"><strong>产品：</strong>${contract.purchase_product || '-'}</p>
+                <p class="mb-1"><strong>数量：</strong>${contract.purchase_quantity || 0}</p>
+                <p class="mb-1"><strong>金额：</strong>${contract.currency} $${parseFloat(contract.contract_amount || 0).toLocaleString()}</p>
+                <p class="mb-1"><strong>预计交付：</strong>${contract.estimated_delivery_date || '-'}</p>
+                <small class="text-muted">创建时间：${new Date(contract.created_at).toLocaleString('zh-CN')}</small>
+              </div>
+              <div class="btn-group-vertical btn-group-sm">
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteContract(${contract.id})">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+    
+    document.getElementById('contractListBody').innerHTML = html;
+    
+    new bootstrap.Modal(document.getElementById('contractListModal')).show();
+    
+  } catch (error) {
+    console.error('获取合同列表失败:', error);
+    showError('获取合同列表失败');
+  }
+}
+
+// 删除合同
+async function deleteContract(contractId) {
+  if (!confirm('确定要删除这个合同吗？')) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/contracts/${contractId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('合同已删除');
+      // 关闭列表模态框并刷新客户列表
+      bootstrap.Modal.getInstance(document.getElementById('contractListModal')).hide();
+      loadCustomers(currentPage);
+    } else {
+      showError(data.message || '删除失败');
+    }
+  } catch (error) {
+    console.error('删除合同失败:', error);
+    showError('删除失败');
+  }
+}
+
+// ==================== 邮件详情翻译功能 ====================
+
+// 翻译邮件
+async function translateEmailInDetail() {
+  try {
+    const email = window.currentEmailInDetail;
+    if (!email) {
+      showError('邮件数据丢失');
+      return;
+    }
+    
+    const translateBtn = document.getElementById('translateEmailBtn');
+    const originalBtn = translateBtn.innerHTML;
+    
+    // 显示加载状态
+    translateBtn.disabled = true;
+    translateBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 翻译中...';
+    
+    const token = localStorage.getItem('authToken');
+    
+    console.log('🔄 调用翻译API...');
+    
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: email.title || '',
+        content: email.content || '',
+        type: 'translate'
+        // 不传target_language，让AI自动检测：中文→英文，英文→中文
+      })
+    });
+    
+    const data = await response.json();
+    
+    translateBtn.disabled = false;
+    translateBtn.innerHTML = originalBtn;
+    
+    if (!data.success) {
+      showError('翻译失败: ' + (data.message || '未知错误'));
+      return;
+    }
+    
+    console.log('✅ 翻译成功');
+    console.log('翻译结果:', data.result);
+    console.log('原标题:', email.title);
+    console.log('译文标题:', data.result.title);
+    console.log('原文语言:', data.result.detected_language);
+    console.log('目标语言:', data.result.target_language);
+    
+    // 显示翻译结果
+    const translationDiv = document.getElementById('emailDetailTranslation');
+    const titleTranslationSpan = document.getElementById('emailDetailTitleTranslation');
+    
+    if (translationDiv && data.result) {
+      // 保存翻译结果
+      window.currentEmailTranslation = {
+        title: data.result.title || email.title,
+        content: data.result.content || email.content,
+        detected_language: data.result.detected_language,
+        target_language: data.result.target_language
+      };
+      
+      // 更新翻译内容（保留换行格式）
+      const translatedContent = data.result.content ? data.result.content.trim() : '';
+      // 使用innerHTML来保留换行，但先转义HTML防止XSS
+      const escapedContent = translatedContent
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      translationDiv.innerHTML = escapedContent;
+      console.log('✅ 已更新翻译内容');
+      
+      // 更新翻译标题
+      if (titleTranslationSpan) {
+        const escapedTitle = (data.result.title || email.title).trim()
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        titleTranslationSpan.innerHTML = escapedTitle;
+        console.log('✅ 已更新翻译标题:', data.result.title);
+      } else {
+        console.warn('⚠️ 找不到标题翻译元素');
+      }
+      
+      // 显示切换按钮
+      document.getElementById('titleTranslationToggle').style.display = 'inline-flex';
+      
+      // 自动切换到译文
+      showTranslatedContent();
+      
+      const langMap = {
+        'zh': '中文',
+        'en': '英文',
+        'chinese': '中文',
+        'english': '英文'
+      };
+      const fromLang = langMap[data.result.detected_language] || data.result.detected_language || '未知';
+      const toLang = langMap[data.result.target_language] || data.result.target_language || '未知';
+      
+      showSuccess(`翻译完成（${fromLang} → ${toLang}）`);
+    }
+    
+  } catch (error) {
+    console.error('❌ 翻译失败:', error);
+    showError('翻译失败: ' + error.message);
+    
+    const translateBtn = document.getElementById('translateEmailBtn');
+    if (translateBtn) {
+      translateBtn.disabled = false;
+      translateBtn.innerHTML = '<i class="bi bi-translate"></i> 翻译邮件';
+    }
+  }
+}
+
+// 显示原文
+function showOriginalContent() {
+  // 切换标题
+  const titleOriginal = document.getElementById('emailDetailTitle');
+  const titleTranslation = document.getElementById('emailDetailTitleTranslation');
+  if (titleOriginal) titleOriginal.style.display = 'inline';
+  if (titleTranslation) titleTranslation.style.display = 'none';
+  
+  // 切换内容
+  document.getElementById('emailDetailContent').style.display = 'block';
+  document.getElementById('emailDetailTranslation').style.display = 'none';
+  
+  // 更新标题按钮状态
+  const titleToggleBtns = document.querySelectorAll('#titleTranslationToggle button');
+  if (titleToggleBtns.length > 0) {
+    titleToggleBtns[0].classList.add('active');
+    titleToggleBtns[1].classList.remove('active');
+  }
+}
+
+// 显示译文
+function showTranslatedContent() {
+  // 切换标题
+  const titleOriginal = document.getElementById('emailDetailTitle');
+  const titleTranslation = document.getElementById('emailDetailTitleTranslation');
+  if (titleOriginal) titleOriginal.style.display = 'none';
+  if (titleTranslation) titleTranslation.style.display = 'inline';
+  
+  // 切换内容
+  document.getElementById('emailDetailContent').style.display = 'none';
+  document.getElementById('emailDetailTranslation').style.display = 'block';
+  
+  // 更新标题按钮状态
+  const titleToggleBtns = document.querySelectorAll('#titleTranslationToggle button');
+  if (titleToggleBtns.length > 0) {
+    titleToggleBtns[0].classList.remove('active');
+    titleToggleBtns[1].classList.add('active');
+  }
+}
 </script>
+

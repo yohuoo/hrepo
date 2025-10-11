@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { Customer } = require('../models');
+const { Customer, Contract } = require('../models');
+const { sequelize } = require('../config/database');
 
 class CustomerService {
   constructor() {}
@@ -40,42 +41,78 @@ class CustomerService {
         interestLevel = null
       } = options;
 
-      const where = { user_id: userId };
-
-      // 搜索条件
+      // 构建SQL WHERE条件
+      let sqlWhere = `user_id = ${userId}`;
+      const replacements = [];
+      
       if (search) {
-        where[Op.or] = [
-          { name: { [Op.iLike]: `%${search}%` } },
-          { first_name: { [Op.iLike]: `%${search}%` } },
-          { last_name: { [Op.iLike]: `%${search}%` } },
-          { email: { [Op.iLike]: `%${search}%` } },
-          { company: { [Op.iLike]: `%${search}%` } }
-        ];
+        sqlWhere += ` AND (name ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 OR email ILIKE $1 OR company ILIKE $1)`;
+        replacements.push(`%${search}%`);
       }
-
-      // 沟通进度筛选
+      
       if (communicationProgress) {
-        where.communication_progress = communicationProgress;
+        sqlWhere += ` AND communication_progress = $${replacements.length + 1}`;
+        replacements.push(communicationProgress);
       }
-
-      // 兴趣程度筛选
+      
       if (interestLevel) {
-        where.interest_level = interestLevel;
+        sqlWhere += ` AND interest_level = $${replacements.length + 1}`;
+        replacements.push(interestLevel);
       }
-
-      const { count, rows } = await Customer.findAndCountAll({
-        where,
-        order: [['created_at', 'DESC']],
-        limit: pageSize,
-        offset: (page - 1) * pageSize
-      });
+      
+      // 使用原始SQL查询（完全绕过Sequelize模型）
+      const offset = (page - 1) * pageSize;
+      
+      console.log('📊 执行SQL查询，WHERE条件:', sqlWhere);
+      
+      // 获取总数
+      const [countResult] = await sequelize.query(
+        `SELECT COUNT(*) as total FROM customers WHERE ${sqlWhere}`,
+        { 
+          bind: replacements,
+          raw: true 
+        }
+      );
+      const total = parseInt(countResult[0].total);
+      
+      // 获取客户数据（包含deal_status）
+      const [customers] = await sequelize.query(
+        `SELECT 
+          id, user_id, name, first_name, last_name, email, company,
+          email_count, communication_progress, interest_level, deal_status,
+          last_communication_time, created_at, updated_at
+         FROM customers 
+         WHERE ${sqlWhere}
+         ORDER BY created_at DESC
+         LIMIT ${pageSize} OFFSET ${offset}`,
+        { 
+          bind: replacements,
+          raw: true 
+        }
+      );
+      
+      console.log('✅ 原始SQL查询完成，共', customers.length, '条记录');
+      if (customers.length > 0) {
+        console.log('🔍 第一个客户数据:', customers[0]);
+      }
+      
+      // 为每个客户添加合同数量
+      const customersWithCount = await Promise.all(customers.map(async (customer) => {
+        try {
+          const contractCount = await Contract.count({ where: { customer_id: customer.id } });
+          customer.contract_count = contractCount;
+        } catch (error) {
+          customer.contract_count = 0;
+        }
+        return customer;
+      }));
 
       return {
-        customers: rows,
-        total: count,
+        customers: customersWithCount,
+        total: total,
         page,
         pageSize,
-        totalPages: Math.ceil(count / pageSize)
+        totalPages: Math.ceil(total / pageSize)
       };
     } catch (error) {
       throw new Error(`获取客户列表失败: ${error.message}`);

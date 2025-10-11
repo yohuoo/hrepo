@@ -66,6 +66,9 @@
       <div class="modal-body" id="emailDetailBody">
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-info" onclick="translateCurrentEmail()">
+          <i class="bi bi-translate"></i> 翻译
+        </button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
         <button type="button" class="btn btn-primary" onclick="replyEmail()">
           <i class="bi bi-reply"></i> 回复
@@ -75,10 +78,70 @@
   </div>
 </div>
 
+<!-- 翻译预览模态框 -->
+<div class="modal fade" id="translateModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-gradient-info text-white">
+        <h5 class="modal-title" id="translateModalTitle">
+          <i class="bi bi-translate"></i> 翻译结果
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="translateModalBody">
+        <div class="text-center p-5">
+          <div class="spinner-border text-info mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+          <p class="loading-text">翻译中<span class="loading-dots">.</span></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg"></i> 关闭
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* AI模态框样式 */
+.bg-gradient-info {
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+}
+
+.ai-preview-content {
+  padding: 20px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  min-height: 100px;
+  white-space: pre-line;
+  line-height: 1.8;
+  color: #212529;
+  font-size: 0.95rem;
+}
+
+.ai-preview-label {
+  font-weight: 700;
+  color: #495057;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-dots {
+  display: inline-block;
+  width: 20px;
+  text-align: left;
+}
+</style>
+
 <script>
 let currentPage = 1;
 let currentFilters = {};
 let currentEmailId = null;
+let currentEmailData = null; // 存储当前查看的邮件数据
 
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ 收件箱页面已加载');
@@ -203,20 +266,43 @@ function renderEmailList(emails) {
   
   let html = '';
   emails.forEach(email => {
-    const customerInfo = email.customer ? `${email.customer.name} (${email.customer.company})` : '未知';
+    // 处理客户信息：根据数据库关联显示准确的收件人类型
+    let customerBadge = '';
+    if (email.customer && email.customer.name) {
+      // 数据库 customer_id 有值 → 这是一个客户
+      const customerName = email.customer.name || '';
+      const customerCompany = email.customer.company || '';
+      customerBadge = `<span class="badge bg-info ms-2" title="客户（从customers表关联）"><i class="bi bi-building"></i> ${customerName}${customerCompany ? ` (${customerCompany})` : ''}</span>`;
+    } else if (email.contact && email.contact.name) {
+      // 数据库 contact_id 有值 → 这是一个联系人
+      const contactName = email.contact.name || '';
+      const contactCompany = email.contact.company || '';
+      customerBadge = `<span class="badge bg-success ms-2" title="联系人（从contacts表关联）"><i class="bi bi-person"></i> ${contactName}${contactCompany ? ` (${contactCompany})` : ''}</span>`;
+    } else if (email.customer_name) {
+      // 只有文本字段 → 历史遗留数据
+      customerBadge = `<span class="badge bg-secondary ms-2" title="历史数据（仅文本）"><i class="bi bi-tag"></i> ${email.customer_name}</span>`;
+    }
+    
+    // 处理预览内容：移除换行符和多余空格，限制长度
+    const previewContent = (email.content || '')
+      .replace(/\r\n/g, ' ')  // 移除Windows换行
+      .replace(/\n/g, ' ')     // 移除Unix换行
+      .replace(/\s+/g, ' ')    // 多个空格合并为一个
+      .trim()
+      .substring(0, 80);       // 限制在80个字符
     
     html += `
       <div class="email-item p-3 border-bottom" style="cursor: pointer;" onclick="showEmailDetail(${email.id})">
-        <div class="d-flex justify-content-between">
-          <div class="flex-grow-1">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1" style="min-width: 0;">
             <div class="email-sender mb-1">
               <i class="bi bi-envelope"></i> <strong>${email.send_address}</strong>
-              ${email.customer ? `<span class="badge bg-info ms-2">${customerInfo}</span>` : ''}
+              ${customerBadge}
             </div>
             <div class="email-subject fw-bold mb-1">${email.title || '(无主题)'}</div>
-            <div class="email-preview text-muted small">${(email.content || '').substring(0, 100)}...</div>
+            <div class="email-preview text-muted small">${previewContent}${previewContent.length >= 80 ? '...' : ''}</div>
           </div>
-          <div class="text-end ms-3">
+          <div class="text-end ms-3 flex-shrink-0">
             <div class="email-time text-muted small">${formatDate(email.send_time)}</div>
             ${email.parent_email_id ? '<span class="badge bg-secondary mt-2"><i class="bi bi-reply"></i> 回复</span>' : ''}
           </div>
@@ -307,6 +393,7 @@ async function showEmailDetail(emailId) {
     }
     
     const email = data.email_history;
+    currentEmailData = email; // 保存当前邮件数据供翻译使用
     
     const html = `
       <div class="mb-3">
@@ -415,5 +502,110 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
+}
+
+// ==================== 翻译功能 ====================
+
+let loadingDotsInterval = null;
+
+// 启动动态省略号动画
+function startLoadingDots() {
+  let dotCount = 1;
+  loadingDotsInterval = setInterval(() => {
+    const dotsElement = document.querySelector('.loading-dots');
+    if (dotsElement) {
+      dotCount = (dotCount % 3) + 1;
+      dotsElement.textContent = '.'.repeat(dotCount);
+    }
+  }, 500);
+}
+
+// 停止动态省略号动画
+function stopLoadingDots() {
+  if (loadingDotsInterval) {
+    clearInterval(loadingDotsInterval);
+    loadingDotsInterval = null;
+  }
+}
+
+// 翻译当前查看的邮件
+async function translateCurrentEmail() {
+  if (!currentEmailData) {
+    showError('没有可翻译的邮件');
+    return;
+  }
+  
+  const title = currentEmailData.title || '';
+  const content = currentEmailData.content || '';
+  
+  if (!content) {
+    showWarning('邮件内容为空，无需翻译');
+    return;
+  }
+  
+  try {
+    // 显示模态框和加载状态
+    const modal = new bootstrap.Modal(document.getElementById('translateModal'));
+    modal.show();
+    
+    // 启动省略号动画
+    startLoadingDots();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'translate'
+      })
+    });
+    
+    const data = await response.json();
+    
+    // 停止省略号动画
+    stopLoadingDots();
+    
+    if (!data.success) {
+      showError('翻译失败: ' + data.message);
+      modal.hide();
+      return;
+    }
+    
+    // 显示翻译结果
+    const langInfo = data.result.detected_language && data.result.target_language 
+      ? ` (${data.result.detected_language} → ${data.result.target_language})`
+      : '';
+    
+    document.getElementById('translateModalTitle').innerHTML = `<i class="bi bi-translate"></i> 翻译结果${langInfo}`;
+    document.getElementById('translateModalBody').innerHTML = `
+      <div class="mb-4">
+        <div class="ai-preview-label">
+          <i class="bi bi-envelope"></i> 翻译后的标题
+        </div>
+        <div class="ai-preview-content">${data.result.title}</div>
+      </div>
+      <div class="mb-3">
+        <div class="ai-preview-label">
+          <i class="bi bi-file-text"></i> 翻译后的内容
+        </div>
+        <div class="ai-preview-content">${data.result.content}</div>
+      </div>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> 
+        这是翻译预览，不会修改原邮件内容
+      </div>
+    `;
+    
+  } catch (error) {
+    console.error('翻译失败:', error);
+    stopLoadingDots();
+    showError('翻译失败: ' + error.message);
+    bootstrap.Modal.getInstance(document.getElementById('translateModal'))?.hide();
+  }
 }
 </script>

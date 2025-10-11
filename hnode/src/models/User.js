@@ -28,6 +28,19 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255),
     allowNull: false
   },
+  department_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'departments',
+      key: 'id'
+    }
+  },
+  role: {
+    type: DataTypes.ENUM('super_admin', 'admin', 'user'),
+    allowNull: false,
+    defaultValue: 'user'
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
@@ -35,6 +48,16 @@ const User = sequelize.define('User', {
   is_admin: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  password_changed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: '是否已修改初始密码'
+  },
+  last_password_change: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '上次修改密码时间'
   }
 }, {
   tableName: 'users',
@@ -49,6 +72,12 @@ const User = sequelize.define('User', {
     {
       unique: true,
       fields: ['email']
+    },
+    {
+      fields: ['department_id']
+    },
+    {
+      fields: ['role']
     }
   ]
 });

@@ -29,12 +29,16 @@
       </div>
       <div class="col-lg-6 col-md-12">
         <div class="d-flex gap-2 justify-content-lg-end">
+          <% if (typeof userPermissions !== 'undefined' && userPermissions.includes('contacts.hunter_search')) { %>
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#hunterSearchModal">
             <i class="bi bi-globe me-1"></i>Hunter.io搜索
           </button>
+          <% } %>
+          <% if (typeof userPermissions !== 'undefined' && userPermissions.includes('contacts.create')) { %>
           <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addContactModal">
             <i class="bi bi-plus-lg me-1"></i>添加联系人
           </button>
+          <% } %>
         </div>
       </div>
     </div>
@@ -296,10 +300,20 @@
 </div>
 
 <script>
+// 用户权限（从后端传递）
+// eslint-disable-next-line
+const userPermissions = <%- JSON.stringify(userPermissions || []) %>;
+console.log('👤 用户权限:', userPermissions);
+
 let currentPage = 1;
 let currentFilters = {};
 let selectedContacts = [];
 let pageSize = 20;
+
+// 权限检查辅助函数
+function hasPermission(code) {
+  return userPermissions.includes(code);
+}
 
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ 联系人页面已加载');
@@ -399,7 +413,7 @@ function renderContactTable(contacts) {
         </td>
         <td>
           <div class="d-flex align-items-center">
-            <div class="avatar-circle me-2">
+            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewContact(${contact.id});" title="点击查看联系人详情">
               ${getInitials(contact.name)}
             </div>
             <div>
@@ -418,16 +432,22 @@ function renderContactTable(contacts) {
               <i class="bi bi-three-dots-vertical"></i>
             </button>
             <ul class="dropdown-menu">
+              ${hasPermission('contacts.view') ? `
               <li><a class="dropdown-item" href="#" onclick="viewContact(${contact.id}); return false;">
                 <i class="bi bi-eye"></i> 查看详情
               </a></li>
+              ` : ''}
+              ${hasPermission('contacts.edit') ? `
               <li><a class="dropdown-item" href="#" onclick="editContact(${contact.id}); return false;">
                 <i class="bi bi-pencil"></i> 编辑
               </a></li>
-              <li><hr class="dropdown-divider"></li>
+              ` : ''}
+              ${(hasPermission('contacts.view') || hasPermission('contacts.edit')) && hasPermission('contacts.delete') ? '<li><hr class="dropdown-divider"></li>' : ''}
+              ${hasPermission('contacts.delete') ? `
               <li><a class="dropdown-item text-danger" href="#" onclick="deleteContact(${contact.id}); return false;">
                 <i class="bi bi-trash"></i> 删除
               </a></li>
+              ` : ''}
             </ul>
           </div>
         </td>
@@ -524,25 +544,36 @@ function changePageSize() {
 
 // 联系人选择功能
 function toggleContactSelection(contactId) {
+  console.log('🔄 切换联系人选择:', contactId);
   const index = selectedContacts.indexOf(contactId);
   if (index > -1) {
     selectedContacts.splice(index, 1);
+    console.log('  ❌ 取消选择');
   } else {
     selectedContacts.push(contactId);
+    console.log('  ✅ 添加选择');
   }
+  console.log('  当前已选择:', selectedContacts);
   updateBatchActions();
 }
 
 function toggleAllContacts() {
-  const isChecked = $('#selectAllContacts').is(':checked');
-  $('.contact-checkbox').prop('checked', isChecked);
+  const selectAllCheckbox = document.getElementById('selectAllContacts');
+  const isChecked = selectAllCheckbox.checked;
+  const checkboxes = document.querySelectorAll('.contact-checkbox');
+  
+  console.log('🔄 全选/取消全选:', isChecked);
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = isChecked;
+  });
   
   if (isChecked) {
-    selectedContacts = $('.contact-checkbox').map(function() {
-      return parseInt($(this).val());
-    }).get();
+    selectedContacts = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    console.log('  ✅ 已选择所有联系人:', selectedContacts);
   } else {
     selectedContacts = [];
+    console.log('  ❌ 已取消所有选择');
   }
   
   updateBatchActions();
@@ -550,45 +581,177 @@ function toggleAllContacts() {
 
 function updateBatchActions() {
   const count = selectedContacts.length;
-  $('#selectedCount').text(`已选择 ${count} 个联系人`);
+  const selectedCountEl = document.getElementById('selectedCount');
+  const batchActionsCard = document.getElementById('batchActionsCard');
   
-  if (count > 0) {
-    $('#batchActionsCard').show();
-  } else {
-    $('#batchActionsCard').hide();
+  if (selectedCountEl) {
+    selectedCountEl.textContent = `已选择 ${count} 个联系人`;
   }
+  
+  if (batchActionsCard) {
+    if (count > 0) {
+      batchActionsCard.style.display = 'block';
+    } else {
+      batchActionsCard.style.display = 'none';
+    }
+  }
+  
+  console.log('📊 更新批量操作面板: 已选择', count, '个联系人');
 }
 
 function clearSelection() {
+  console.log('🗑️ 清空选择');
   selectedContacts = [];
-  $('.contact-checkbox').prop('checked', false);
-  $('#selectAllContacts').prop('checked', false);
+  
+  const checkboxes = document.querySelectorAll('.contact-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+      const selectAllCheckbox = document.getElementById('selectAllContacts');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = false;
+  }
+  
   updateBatchActions();
 }
 
+async function deleteSelectedContacts() {
+  if (selectedContacts.length === 0) {
+    showWarning('请先选择要删除的联系人');
+    return;
+  }
+  
+  if (!confirm(`确定要删除选中的 ${selectedContacts.length} 个联系人吗？此操作不可恢复！`)) {
+    return;
+  }
+  
+  try {
+    console.log('🗑️ 批量删除联系人:', selectedContacts);
+    
+    const token = localStorage.getItem('authToken');
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 逐个删除
+    for (const contactId of selectedContacts) {
+      try {
+        const response = await fetch(`/api/contacts/${contactId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          successCount++;
+          console.log(`  ✅ 删除联系人 ${contactId} 成功`);
+        } else {
+          failCount++;
+          console.log(`  ❌ 删除联系人 ${contactId} 失败:`, data.message);
+        }
+      } catch (error) {
+        console.error(`❌ 删除联系人 ${contactId} 出错:`, error);
+        failCount++;
+      }
+    }
+    
+    // 显示结果
+    if (successCount > 0) {
+      showSuccess(`成功删除 ${successCount} 个联系人${failCount > 0 ? `，失败 ${failCount} 个` : ''}`);
+      
+      // 清空选择并刷新列表
+      selectedContacts = [];
+      
+      const selectAllCheckbox = document.getElementById('selectAllContacts');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+      }
+      
+      updateBatchActions();
+      await loadContacts(currentPage);
+    } else {
+      showError('删除失败');
+    }
+  } catch (error) {
+    console.error('❌ 批量删除联系人失败:', error);
+    showError('批量删除失败: ' + error.message);
+  }
+}
+
 // 批量操作
-function exportSelectedContacts() {
+async function exportSelectedContacts() {
   if (selectedContacts.length === 0) {
     showToast('请先选择要导出的联系人', 'warning');
     return;
   }
   
-  // 实现导出功能
-  showToast('导出功能开发中...', 'info');
-}
-
-function deleteSelectedContacts() {
-  if (selectedContacts.length === 0) {
-    showToast('请先选择要删除的联系人', 'warning');
-    return;
+  try {
+    console.log('📥 导出选中的联系人:', selectedContacts);
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 获取选中联系人的完整信息
+    const contactsData = [];
+    for (const contactId of selectedContacts) {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        contactsData.push(data.contact);
+      }
+    }
+    
+    if (contactsData.length === 0) {
+      showToast('没有可导出的数据', 'warning');
+      return;
+    }
+    
+    // 转换为CSV格式
+    const headers = ['姓名', '邮箱', '名字', '姓氏', '公司', '职位', '域名', '标签', '创建时间'];
+    const csvRows = [headers.join(',')];
+    
+    contactsData.forEach(contact => {
+      const row = [
+        `"${contact.name || ''}"`,
+        `"${contact.email || ''}"`,
+        `"${contact.first_name || ''}"`,
+        `"${contact.last_name || ''}"`,
+        `"${contact.company || ''}"`,
+        `"${contact.position || ''}"`,
+        `"${contact.domain || ''}"`,
+        `"${contact.tags && contact.tags.length > 0 ? contact.tags.join(';') : ''}"`,
+        `"${new Date(contact.created_at).toLocaleDateString('zh-CN')}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    // 创建CSV文件并下载
+    const csvContent = '\uFEFF' + csvRows.join('\n'); // \uFEFF 是BOM，让Excel正确识别UTF-8
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `联系人导出_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast(`成功导出 ${contactsData.length} 个联系人`, 'success');
+  } catch (error) {
+    console.error('❌ 导出联系人失败:', error);
+    showToast('导出失败: ' + error.message, 'danger');
   }
-  
-  if (!confirm(`确定要删除选中的 ${selectedContacts.length} 个联系人吗？`)) {
-    return;
-  }
-  
-  // 实现批量删除
-  showToast('批量删除功能开发中...', 'info');
 }
 
 // 筛选功能已移除

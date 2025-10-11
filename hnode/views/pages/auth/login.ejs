@@ -77,7 +77,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.success) {
           console.log('✅ 登录成功！');
           localStorage.setItem('authToken', data.token);
+          localStorage.setItem('userInfo', JSON.stringify(data.user));
           document.cookie = `authToken=${data.token}; path=/; max-age=${7*24*60*60}`;
+          
+          // 检查是否需要修改密码
+          if (data.requires_password_change) {
+            showWarning('首次登录需要修改密码');
+            setTimeout(() => {
+              window.location.href = '/change-password';
+            }, 1000);
+            return;
+          }
           
           showSuccess('登录成功！即将跳转到控制台...');
           

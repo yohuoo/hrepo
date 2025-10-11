@@ -3,9 +3,11 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const EmailTemplateService = require('../services/EmailTemplateService');
 const EmailSendingService = require('../services/EmailSendingService');
+const EmailAIService = require('../services/EmailAIService');
 
 const emailTemplateService = new EmailTemplateService();
 const emailSendingService = new EmailSendingService();
+const emailAIService = new EmailAIService();
 
 // 批量发送邮件（模拟）
 router.post('/send-batch', authenticateToken, async (req, res) => {
@@ -237,6 +239,49 @@ router.get('/thread/:emailId', authenticateToken, async (req, res) => {
       success: false,
       message: '查看邮件线程失败',
       error: error.message
+    });
+  }
+});
+
+// AI辅助接口（AI生成/翻译）
+router.post('/ai-assist', authenticateToken, async (req, res) => {
+  try {
+    const { title, content, type, target_language } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: '邮件内容不能为空'
+      });
+    }
+    
+    if (!type || !['enrich', 'translate'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: '无效的操作类型，必须是 enrich 或 translate'
+      });
+    }
+    
+    let result;
+    
+    if (type === 'enrich') {
+      // AI润色生成
+      result = await emailAIService.enrichEmail(title || '', content);
+    } else if (type === 'translate') {
+      // 翻译
+      result = await emailAIService.translateEmail(title || '', content, target_language);
+    }
+    
+    res.json({
+      success: true,
+      result
+    });
+    
+  } catch (error) {
+    console.error('AI辅助处理失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'AI处理失败'
     });
   }
 });

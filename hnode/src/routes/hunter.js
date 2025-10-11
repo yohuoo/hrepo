@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { checkPagePermission } = require('../middleware/permission');
 const HunterService = require('../services/HunterService');
 
 // 域名联系人搜索
-router.get('/domain-search', authenticateToken, async (req, res) => {
+router.get('/domain-search', authenticateToken, checkPagePermission('contacts.hunter_search'), async (req, res) => {
   try {
     const { domain, limit = 20 } = req.query;
 

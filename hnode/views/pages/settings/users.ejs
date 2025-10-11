@@ -1,0 +1,493 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item"><a href="/settings">系统设置</a></li>
+        <li class="breadcrumb-item active">用户管理</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">用户管理</h1>
+    <p class="page-subtitle">管理系统用户和权限</p>
+  </div>
+</div>
+
+<!-- 搜索和筛选区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-center">
+      <div class="col-lg-4">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control" id="searchKeyword" placeholder="搜索用户名或邮箱...">
+        </div>
+      </div>
+      <div class="col-lg-3">
+        <select class="form-select" id="filterDepartment" onchange="loadUsers(1)">
+          <option value="">全部部门</option>
+        </select>
+      </div>
+      <div class="col-lg-2">
+        <select class="form-select" id="filterRole" onchange="loadUsers(1)">
+          <option value="">全部角色</option>
+          <option value="super_admin">超级管理员</option>
+          <option value="admin">管理员</option>
+          <option value="user">普通用户</option>
+        </select>
+      </div>
+      <div class="col-lg-3">
+        <button class="btn btn-primary w-100" onclick="showAddUserModal()">
+          <i class="bi bi-plus-lg me-1"></i>添加用户
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>用户名</th>
+            <th>邮箱</th>
+            <th>部门</th>
+            <th>角色</th>
+            <th>密码状态</th>
+            <th>状态</th>
+            <th width="120">操作</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr>
+            <td colspan="7" class="text-center p-5">
+              <div class="spinner-border text-primary" role="status"></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div class="d-flex justify-content-between align-items-center">
+      <span id="userCount">共 0 个用户</span>
+      <nav id="pagination"></nav>
+    </div>
+  </div>
+</div>
+
+<!-- 添加/编辑用户模态框 -->
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="userModalTitle">添加用户</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="userForm">
+          <input type="hidden" id="userId">
+          <div class="mb-3">
+            <label class="form-label">用户名 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="username" required minlength="3" maxlength="50">
+            <div class="form-text">用户名长度为3-50个字符</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">邮箱 <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="email" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">部门</label>
+            <select class="form-select" id="userDepartment">
+              <option value="">未分配</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">角色 <span class="text-danger">*</span></label>
+            <select class="form-select" id="userRole" required>
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+              <option value="super_admin">超级管理员</option>
+            </select>
+            <div class="form-text">
+              管理员只能创建普通用户；超级管理员可创建所有角色
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 新用户默认密码：<strong>Admin123456</strong><br>
+            用户首次登录时需要修改密码
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveUser()">
+          <i class="bi bi-check-lg me-1"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let pageSize = 20;
+let departments = [];
+let currentEditingUser = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadDepartments();
+  await loadUsers();
+  
+  const searchInput = document.getElementById('searchKeyword');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(() => loadUsers(1), 500));
+  }
+});
+
+// 加载部门列表
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/departments/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      departments = data.departments || [];
+      updateDepartmentSelects();
+    }
+  } catch (error) {
+    console.error('加载部门列表失败:', error);
+  }
+}
+
+// 更新部门下拉框
+function updateDepartmentSelects() {
+  const filterSelect = document.getElementById('filterDepartment');
+  const userDeptSelect = document.getElementById('userDepartment');
+  
+  filterSelect.innerHTML = '<option value="">全部部门</option>';
+  userDeptSelect.innerHTML = '<option value="">未分配</option>';
+  
+  function addOptions(depts, prefix = '') {
+    depts.forEach(dept => {
+      const option = `<option value="${dept.id}">${prefix}${dept.name}</option>`;
+      filterSelect.innerHTML += option;
+      userDeptSelect.innerHTML += option;
+      
+      if (dept.children && dept.children.length > 0) {
+        addOptions(dept.children, prefix + '　');
+      }
+    });
+  }
+  
+  addOptions(departments);
+}
+
+// 加载用户列表
+async function loadUsers(page = 1) {
+  try {
+    const token = localStorage.getItem('authToken');
+    const search = document.getElementById('searchKeyword').value;
+    const department_id = document.getElementById('filterDepartment').value;
+    const role = document.getElementById('filterRole').value;
+    
+    const params = new URLSearchParams({
+      page,
+      pageSize,
+      ...(search && { search }),
+      ...(department_id && { department_id }),
+      ...(role && { role })
+    });
+    
+    const response = await fetch(`/api/users?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('加载用户列表失败');
+      return;
+    }
+    
+    currentPage = page;
+    renderUserTable(data.users || []);
+    renderPagination(data.page, data.total_pages);
+    document.getElementById('userCount').textContent = `共 ${data.total} 个用户`;
+    
+  } catch (error) {
+    console.error('加载用户列表失败:', error);
+    showError('加载用户列表失败');
+  }
+}
+
+// 渲染用户表格
+function renderUserTable(users) {
+  const tbody = document.getElementById('userTableBody');
+  
+  if (users.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <h5>暂无用户</h5>
+            <p class="text-muted">点击右上角"添加用户"创建第一个用户</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  users.forEach(user => {
+    const roleBadge = {
+      'super_admin': '<span class="badge bg-danger">超级管理员</span>',
+      'admin': '<span class="badge bg-warning text-dark">管理员</span>',
+      'user': '<span class="badge bg-primary">普通用户</span>'
+    }[user.role] || '<span class="badge bg-secondary">未知</span>';
+    
+    const pwdStatus = user.password_changed 
+      ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 已修改</span>'
+      : '<span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> 未修改</span>';
+    
+    html += `
+      <tr class="clickable-row" onclick="editUser(${user.id})" style="cursor: pointer;">
+        <td><strong>${user.username}</strong></td>
+        <td>${user.email}</td>
+        <td>${user.department ? user.department.name : '<span class="text-muted">未分配</span>'}</td>
+        <td>${roleBadge}</td>
+        <td>${pwdStatus}</td>
+        <td>
+          ${user.is_active 
+            ? '<span class="badge bg-success">激活</span>' 
+            : '<span class="badge bg-secondary">禁用</span>'}
+        </td>
+        <td onclick="event.stopPropagation();">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" onclick="editUser(${user.id})">
+                <i class="bi bi-pencil"></i> 编辑
+              </a></li>
+              <li><a class="dropdown-item" href="#" onclick="resetUserPassword(${user.id}, '${user.username}')">
+                <i class="bi bi-key"></i> 重置密码
+              </a></li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+}
+
+// 渲染分页
+function renderPagination(current, total) {
+  const pagination = document.getElementById('pagination');
+  if (total <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+  
+  let html = '<ul class="pagination pagination-sm mb-0">';
+  
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadUsers(${current - 1}); return false;">上一页</a>
+    </li>
+  `;
+  
+  for (let i = 1; i <= Math.min(total, 5); i++) {
+    html += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="loadUsers(${i}); return false;">${i}</a>
+      </li>
+    `;
+  }
+  
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadUsers(${current + 1}); return false;">下一页</a>
+    </li>
+  `;
+  
+  html += '</ul>';
+  pagination.innerHTML = html;
+}
+
+// 显示添加用户模态框
+function showAddUserModal() {
+  currentEditingUser = null;
+  document.getElementById('userModalTitle').textContent = '添加用户';
+  document.getElementById('userId').value = '';
+  document.getElementById('username').value = '';
+  document.getElementById('email').value = '';
+  document.getElementById('userDepartment').value = '';
+  document.getElementById('userRole').value = 'user';
+  
+  new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+// 编辑用户
+async function editUser(id) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/users?pageSize=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取用户信息失败');
+      return;
+    }
+    
+    const user = data.users.find(u => u.id === id);
+    
+    if (!user) {
+      showError('用户不存在');
+      return;
+    }
+    
+    // 填充表单
+    currentEditingUser = user;
+    document.getElementById('userModalTitle').textContent = '编辑用户';
+    document.getElementById('userId').value = user.id;
+    document.getElementById('username').value = user.username;
+    document.getElementById('email').value = user.email;
+    document.getElementById('userDepartment').value = user.department_id || '';
+    document.getElementById('userRole').value = user.role;
+    
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+    
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    showError('获取用户信息失败');
+  }
+}
+
+// 保存用户
+async function saveUser() {
+  try {
+    const userId = document.getElementById('userId').value;
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const department_id = document.getElementById('userDepartment').value;
+    const role = document.getElementById('userRole').value;
+    
+    // 前端验证
+    if (!username || !email) {
+      showWarning('请填写用户名和邮箱');
+      return;
+    }
+    
+    if (username.length < 3 || username.length > 50) {
+      showWarning('用户名长度必须在3-50个字符之间');
+      return;
+    }
+    
+    const token = localStorage.getItem('authToken');
+    const url = userId ? `/api/users/${userId}` : '/api/users';
+    const method = userId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username,
+        email,
+        department_id: department_id ? parseInt(department_id) : null,
+        role
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      // 优化错误提示
+      let errorMsg = data.message || '保存失败';
+      if (errorMsg.includes('Validation len on username failed')) {
+        errorMsg = '用户名长度必须在3-50个字符之间';
+      } else if (errorMsg.includes('username must be unique')) {
+        errorMsg = '用户名已存在，请使用其他用户名';
+      } else if (errorMsg.includes('email must be unique')) {
+        errorMsg = '邮箱已存在，请使用其他邮箱';
+      }
+      showError(errorMsg);
+      return;
+    }
+    
+    showSuccess(data.message || '用户保存成功');
+    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+    await loadUsers();
+    
+  } catch (error) {
+    console.error('保存用户失败:', error);
+    showError('保存失败: ' + error.message);
+  }
+}
+
+// 重置用户密码
+async function resetUserPassword(id, username) {
+  if (!confirm(`确定要重置用户"${username}"的密码吗？\n\n密码将被重置为：Admin123456\n用户下次登录时需要修改密码。`)) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/users/${id}/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '重置失败');
+      return;
+    }
+    
+    showSuccess(data.message || '密码重置成功');
+    await loadUsers();
+    
+  } catch (error) {
+    console.error('重置密码失败:', error);
+    showError('重置失败: ' + error.message);
+  }
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+</script>
+

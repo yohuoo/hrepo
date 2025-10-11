@@ -1,0 +1,676 @@
+<!-- 页面标题 -->
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">控制台</a></li>
+        <li class="breadcrumb-item active">销售数据</li>
+      </ol>
+    </nav>
+    <h1 class="page-title">销售数据管理</h1>
+    <p class="page-subtitle">记录和管理您的销售业绩</p>
+  </div>
+</div>
+
+<!-- 搜索和操作区域 -->
+<div class="card mb-4">
+  <div class="card-body">
+    <!-- 超级管理员/管理员筛选器 -->
+    <div class="row g-3 align-items-center mb-3" id="adminFilters" style="display: none;">
+      <div class="col-md-4">
+        <label class="form-label mb-1">查看范围</label>
+        <select class="form-select" id="viewScope" onchange="handleScopeChange()">
+          <option value="all">全部数据</option>
+          <option value="department">按部门</option>
+          <option value="user">按用户</option>
+        </select>
+      </div>
+      <div class="col-md-4" id="departmentFilter" style="display: none;">
+        <label class="form-label mb-1">选择部门</label>
+        <select class="form-select" id="filterDepartment" onchange="handleFilterChange()">
+          <option value="">请选择部门</option>
+        </select>
+      </div>
+      <div class="col-md-4" id="userFilter" style="display: none;">
+        <label class="form-label mb-1">选择用户</label>
+        <select class="form-select" id="filterUser" onchange="handleFilterChange()">
+          <option value="">请选择用户</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- 时间筛选和操作按钮 -->
+    <div class="row g-3 align-items-center">
+      <div class="col-lg-3">
+        <input type="date" class="form-control" id="startDate" placeholder="开始日期">
+      </div>
+      <div class="col-lg-3">
+        <input type="date" class="form-control" id="endDate" placeholder="结束日期">
+      </div>
+      <div class="col-lg-3">
+        <button class="btn btn-outline-primary w-100" onclick="handleSearch()">
+          <i class="bi bi-search me-1"></i>查询
+        </button>
+      </div>
+      <div class="col-lg-3">
+        <button class="btn btn-primary w-100" onclick="showAddSalesModal()">
+          <i class="bi bi-plus-lg me-1"></i>添加销售记录
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 销售统计卡片 -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted">销售总额</h6>
+        <h3 class="mb-0" id="totalAmount">$0</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted">销售记录</h6>
+        <h3 class="mb-0" id="totalRecords">0</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted">客户数</h6>
+        <h3 class="mb-0" id="totalCustomers">0</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="text-muted">销售数量</h6>
+        <h3 class="mb-0" id="totalQuantity">0</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 销售记录列表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>日期</th>
+            <th>客户</th>
+            <th>销售人员</th>
+            <th>产品</th>
+            <th>数量</th>
+            <th>金额</th>
+            <th>备注</th>
+            <th width="100">操作</th>
+          </tr>
+        </thead>
+        <tbody id="salesTableBody">
+          <tr>
+            <td colspan="8" class="text-center p-5">
+              <div class="spinner-border text-primary"></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 添加/编辑销售记录模态框 -->
+<div class="modal fade" id="salesModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="salesModalTitle">添加销售记录</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="salesForm">
+          <input type="hidden" id="salesId">
+          <div class="mb-3">
+            <label class="form-label">销售日期 <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="saleDate" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">客户 <span class="text-danger">*</span></label>
+            <select class="form-select" id="customerId" required>
+              <option value="">选择客户</option>
+            </select>
+            <div class="form-text">
+              如找不到客户，请先到"客户管理"页面添加
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">产品名称 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="productName" placeholder="如：MMQ、甜叶菊" required>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">销售数量 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="quantity" step="0.01" min="0" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">销售金额 <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="amount" step="0.01" min="0" required>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" id="notes" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveSalesRecord()">
+          <i class="bi bi-check-lg me-1"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let customers = [];
+let currentUser = null;
+let allDepartments = [];
+let allUsers = [];
+
+document.addEventListener('DOMContentLoaded', async function() {
+  // 获取当前用户信息
+  currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  
+  // 如果userInfo中没有role字段，从后端重新获取
+  if (!currentUser.role) {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        currentUser = data.user;
+        localStorage.setItem('userInfo', JSON.stringify(currentUser));
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+    }
+  }
+  
+  // 如果是超级管理员或管理员，显示筛选器并加载部门和用户
+  if (currentUser.role === 'super_admin' || currentUser.role === 'admin') {
+    document.getElementById('adminFilters').style.display = '';
+    await loadDepartments();
+    await loadAllUsers();
+  }
+  
+  await loadCustomers();
+  await loadSalesStatistics();
+  await loadSalesRecords();
+  
+  // 设置默认日期为当天
+  document.getElementById('saleDate').valueAsDate = new Date();
+});
+
+// 加载部门列表
+async function loadDepartments() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/departments/tree', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.success) {
+      allDepartments = flattenDepartments(data.departments || []);
+      updateDepartmentSelect();
+    }
+  } catch (error) {
+    console.error('加载部门失败:', error);
+  }
+}
+
+// 扁平化部门树
+function flattenDepartments(depts, result = []) {
+  depts.forEach(dept => {
+    result.push(dept);
+    if (dept.children && dept.children.length > 0) {
+      flattenDepartments(dept.children, result);
+    }
+  });
+  return result;
+}
+
+// 更新部门选择器
+function updateDepartmentSelect() {
+  const select = document.getElementById('filterDepartment');
+  select.innerHTML = '<option value="">请选择部门</option>';
+  allDepartments.forEach(dept => {
+    const indent = '　'.repeat(dept.level - 1);
+    select.innerHTML += `<option value="${dept.id}">${indent}${dept.name}</option>`;
+  });
+}
+
+// 加载所有用户列表
+async function loadAllUsers() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/users?pageSize=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (data.success) {
+      allUsers = data.users || [];
+      updateUserSelect();
+    }
+  } catch (error) {
+    console.error('加载用户失败:', error);
+  }
+}
+
+// 更新用户选择器
+function updateUserSelect() {
+  const select = document.getElementById('filterUser');
+  select.innerHTML = '<option value="">请选择用户</option>';
+  allUsers.forEach(user => {
+    select.innerHTML += `<option value="${user.id}">${user.username} (${user.email})</option>`;
+  });
+}
+
+// 处理范围变化
+function handleScopeChange() {
+  const scope = document.getElementById('viewScope').value;
+  const departmentFilter = document.getElementById('departmentFilter');
+  const userFilter = document.getElementById('userFilter');
+  
+  console.log('🔄 查看范围改变:', scope);
+  
+  if (scope === 'department') {
+    departmentFilter.style.display = '';
+    userFilter.style.display = 'none';
+    // 重置部门选择
+    document.getElementById('filterDepartment').value = '';
+  } else if (scope === 'user') {
+    departmentFilter.style.display = 'none';
+    userFilter.style.display = '';
+    // 重置用户选择
+    document.getElementById('filterUser').value = '';
+  } else {
+    departmentFilter.style.display = 'none';
+    userFilter.style.display = 'none';
+  }
+  
+  // 刷新数据
+  loadSalesRecords();
+  loadSalesStatistics();
+}
+
+// 处理筛选条件变化（选择具体的部门或用户时）
+function handleFilterChange() {
+  console.log('🔄 筛选条件改变');
+  // 同时刷新列表和统计
+  loadSalesRecords();
+  loadSalesStatistics();
+}
+
+// 处理查询按钮点击（日期筛选）
+function handleSearch() {
+  console.log('🔍 点击查询按钮');
+  // 同时刷新列表和统计
+  loadSalesRecords();
+  loadSalesStatistics();
+}
+
+// 加载客户列表
+async function loadCustomers() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/customers?pageSize=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    
+    if (data.success) {
+      customers = data.customers || [];
+      updateCustomerSelect();
+    }
+  } catch (error) {
+    console.error('加载客户列表失败:', error);
+  }
+}
+
+// 更新客户下拉框
+function updateCustomerSelect() {
+  const select = document.getElementById('customerId');
+  select.innerHTML = '<option value="">选择客户</option>';
+  customers.forEach(c => {
+    select.innerHTML += `<option value="${c.id}">${c.name} - ${c.company}</option>`;
+  });
+}
+
+// 加载销售统计
+async function loadSalesStatistics() {
+  try {
+    console.log('=== loadSalesStatistics 函数被调用 ===');
+    console.log('当前用户:', currentUser);
+    
+    const token = localStorage.getItem('authToken');
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    const params = new URLSearchParams({
+      ...(startDate && { start_date: startDate }),
+      ...(endDate && { end_date: endDate })
+    });
+    
+    console.log('初始参数:', params.toString());
+    
+    // 如果是超级管理员或管理员，添加筛选参数
+    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin')) {
+      const scopeElement = document.getElementById('viewScope');
+      const scope = scopeElement ? scopeElement.value : 'all';
+      console.log('🔍 筛选范围:', scope);
+      
+      if (scope === 'department') {
+        const deptElement = document.getElementById('filterDepartment');
+        const deptId = deptElement ? deptElement.value : '';
+        console.log('🏢 部门ID:', deptId);
+        if (deptId) {
+          params.append('department_id', deptId);
+          console.log('✅ 已添加department_id参数');
+        }
+      } else if (scope === 'user') {
+        const userElement = document.getElementById('filterUser');
+        const userId = userElement ? userElement.value : '';
+        console.log('👤 用户ID:', userId);
+        if (userId) {
+          params.append('user_id', userId);
+          console.log('✅ 已添加user_id参数');
+        }
+      }
+    }
+    
+    const finalUrl = `/api/sales/statistics?${params.toString()}`;
+    console.log('📊 最终请求URL:', finalUrl);
+    
+    const response = await fetch(finalUrl, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const stats = data.statistics.summary;
+      document.getElementById('totalAmount').textContent = `$${parseFloat(stats.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('totalRecords').textContent = stats.total_records || 0;
+      document.getElementById('totalCustomers').textContent = stats.customer_count || 0;
+      document.getElementById('totalQuantity').textContent = parseFloat(stats.total_quantity || 0).toFixed(2);
+    }
+  } catch (error) {
+    console.error('加载销售统计失败:', error);
+  }
+}
+
+// 加载销售记录
+async function loadSalesRecords() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    const params = new URLSearchParams({
+      pageSize: 100,
+      ...(startDate && { start_date: startDate }),
+      ...(endDate && { end_date: endDate })
+    });
+    
+    // 如果是超级管理员或管理员，添加筛选参数
+    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin')) {
+      const scope = document.getElementById('viewScope').value;
+      if (scope === 'department') {
+        const deptId = document.getElementById('filterDepartment').value;
+        if (deptId) params.append('department_id', deptId);
+      } else if (scope === 'user') {
+        const userId = document.getElementById('filterUser').value;
+        if (userId) params.append('user_id', userId);
+      }
+    }
+    
+    const response = await fetch(`/api/sales?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('加载销售记录失败');
+      return;
+    }
+    
+    renderSalesTable(data.sales_records || []);
+    
+  } catch (error) {
+    console.error('加载销售记录失败:', error);
+    showError('加载失败');
+  }
+}
+
+// 渲染销售记录表格
+function renderSalesTable(records) {
+  const tbody = document.getElementById('salesTableBody');
+  
+  if (records.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center p-5">
+          <div class="empty-state">
+            <i class="bi bi-cash-coin"></i>
+            <h5>暂无销售记录</h5>
+            <p class="text-muted">点击右上角"添加销售记录"创建第一条记录</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  records.forEach(record => {
+    // 获取销售人员信息
+    const salesperson = record.user ? record.user.username : '未知';
+    const salespersonEmail = record.user ? record.user.email : '';
+    
+    html += `
+      <tr>
+        <td>${new Date(record.sale_date).toLocaleDateString('zh-CN')}</td>
+        <td>
+          <div><strong>${record.customer.name}</strong></div>
+          <small class="text-muted">${record.customer.company}</small>
+        </td>
+        <td>
+          <div>
+            <i class="bi bi-person-badge text-primary me-1"></i>
+            <strong>${salesperson}</strong>
+          </div>
+          ${salespersonEmail ? `<small class="text-muted">${salespersonEmail}</small>` : ''}
+        </td>
+        <td>${record.product_name}</td>
+        <td>${parseFloat(record.quantity).toFixed(2)}</td>
+        <td><strong>$${parseFloat(record.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</strong></td>
+        <td>${record.notes || '-'}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="editSalesRecord(${record.id})">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-outline-danger" onclick="deleteSalesRecord(${record.id})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+}
+
+// 显示添加销售记录模态框
+function showAddSalesModal() {
+  document.getElementById('salesModalTitle').textContent = '添加销售记录';
+  document.getElementById('salesId').value = '';
+  document.getElementById('saleDate').valueAsDate = new Date();
+  document.getElementById('customerId').value = '';
+  document.getElementById('productName').value = '';
+  document.getElementById('quantity').value = '';
+  document.getElementById('amount').value = '';
+  document.getElementById('notes').value = '';
+  
+  new bootstrap.Modal(document.getElementById('salesModal')).show();
+}
+
+// 保存销售记录
+async function saveSalesRecord() {
+  try {
+    const salesId = document.getElementById('salesId').value;
+    const sale_date = document.getElementById('saleDate').value;
+    const customer_id = document.getElementById('customerId').value;
+    const product_name = document.getElementById('productName').value.trim();
+    const quantity = document.getElementById('quantity').value;
+    const amount = document.getElementById('amount').value;
+    const notes = document.getElementById('notes').value.trim();
+    
+    if (!sale_date || !customer_id || !product_name || !quantity || !amount) {
+      showWarning('请填写所有必填项');
+      return;
+    }
+    
+    const token = localStorage.getItem('authToken');
+    const url = salesId ? `/api/sales/${salesId}` : '/api/sales';
+    const method = salesId ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_id: parseInt(customer_id),
+        sale_date,
+        product_name,
+        quantity: parseFloat(quantity),
+        amount: parseFloat(amount),
+        notes
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '保存失败');
+      return;
+    }
+    
+    showSuccess(data.message || '销售记录保存成功');
+    bootstrap.Modal.getInstance(document.getElementById('salesModal')).hide();
+    await loadSalesStatistics();
+    await loadSalesRecords();
+    
+  } catch (error) {
+    console.error('保存销售记录失败:', error);
+    showError('保存失败: ' + error.message);
+  }
+}
+
+// 删除销售记录
+async function deleteSalesRecord(id) {
+  if (!confirm('确定要删除这条销售记录吗？')) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/sales/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError(data.message || '删除失败');
+      return;
+    }
+    
+    showSuccess('销售记录删除成功');
+    await loadSalesStatistics();
+    await loadSalesRecords();
+    
+  } catch (error) {
+    console.error('删除销售记录失败:', error);
+    showError('删除失败: ' + error.message);
+  }
+}
+
+async function editSalesRecord(id) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const response = await fetch(`/api/sales?pageSize=1000`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      showError('获取销售记录失败');
+      return;
+    }
+    
+    const record = data.sales_records.find(r => r.id === id);
+    
+    if (!record) {
+      showError('销售记录不存在');
+      return;
+    }
+    
+    // 填充表单
+    document.getElementById('salesModalTitle').textContent = '编辑销售记录';
+    document.getElementById('salesId').value = record.id;
+    document.getElementById('saleDate').value = record.sale_date;
+    document.getElementById('customerId').value = record.customer_id;
+    document.getElementById('productName').value = record.product_name;
+    document.getElementById('quantity').value = record.quantity;
+    document.getElementById('amount').value = record.amount;
+    document.getElementById('notes').value = record.notes || '';
+    
+    new bootstrap.Modal(document.getElementById('salesModal')).show();
+    
+  } catch (error) {
+    console.error('获取销售记录失败:', error);
+    showError('获取销售记录失败');
+  }
+}
+</script>
+

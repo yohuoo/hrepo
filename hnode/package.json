@@ -1,7 +1,7 @@
 {
-  "name": "hrepo-nodejs",
-  "version": "1.0.0",
-  "description": "HRepo API - 海外客户搜索系统 (Node.js版本)",
+  "name": "hnode-crm",
+  "version": "1.2.0",
+  "description": "HNode - 智能客户关系管理系统（集成AI、邮件、合同、权限管理）",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",

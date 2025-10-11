@@ -16,13 +16,16 @@
             <!-- 收件人 -->
                   <div class="mb-3">
                     <label class="form-label">收件人</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" id="recipients" placeholder="请选择收件人" readonly style="cursor: pointer;" onclick="showSelectedRecipients()">
-                      <button type="button" class="btn btn-outline-primary" onclick="selectRecipients()">
-                        <i class="bi bi-pencil"></i> 选择收件人
+                    <input type="text" class="form-control" id="recipients" placeholder="点击选择收件人" readonly onclick="selectRecipients()" style="cursor: pointer;">
+                    <div class="mt-2 d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectRecipients()">
+                        <i class="bi bi-pencil"></i> 编辑收件人
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllRecipients()" id="clearRecipientsBtn" style="display: none;">
+                        <i class="bi bi-x-circle"></i> 清空收件人
                       </button>
                     </div>
-                    <small class="text-muted">点击输入框查看已选择的收件人列表</small>
+                    <small class="text-muted">支持选择联系人和客户，相同邮箱自动同步</small>
                   </div>
 
             <!-- 发件人邮箱 -->
@@ -37,19 +40,64 @@
             <div class="mb-3">
               <label class="form-label">邮件主题</label>
               <input type="text" class="form-control" id="emailSubject" placeholder="请输入邮件主题">
+              <!-- AI生成的标题预览 -->
+              <div id="aiTitlePreview" style="display: none;">
+                <div class="ai-result-preview mt-2">
+                  <div class="ai-result-header">
+                    <span class="ai-result-label">
+                      <i class="bi bi-stars"></i> AI优化后的标题
+                    </span>
+                    <div class="ai-result-actions">
+                      <button type="button" class="btn btn-sm btn-success" onclick="applyAITitle()">
+                        <i class="bi bi-check-lg"></i> 替换
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAITitle()">
+                        <i class="bi bi-x-lg"></i> 取消
+                      </button>
+                    </div>
+                  </div>
+                  <div class="ai-result-content" id="aiTitleContent"></div>
+                </div>
+              </div>
             </div>
 
             <!-- 邮件内容 -->
             <div class="mb-3">
-              <label class="form-label">邮件内容</label>
+              <label class="form-label d-flex justify-content-between align-items-center">
+                <span>邮件内容</span>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-primary" onclick="aiEnrichEmail()" title="AI生成优化邮件">
+                    <i class="bi bi-stars"></i> AI生成
+                  </button>
+                  <button type="button" class="btn btn-outline-info" onclick="translateEmail()" title="翻译邮件">
+                    <i class="bi bi-translate"></i> 翻译
+                  </button>
+                </div>
+              </label>
               <textarea class="form-control" id="emailContent" rows="15" placeholder="请输入邮件内容，可以使用个性化变量"></textarea>
+              <!-- AI生成的内容预览 -->
+              <div id="aiContentPreview" style="display: none;">
+                <div class="ai-result-preview mt-2">
+                  <div class="ai-result-header">
+                    <span class="ai-result-label">
+                      <i class="bi bi-stars"></i> <span id="aiContentLabel">AI优化后的内容</span>
+                    </span>
+                    <div class="ai-result-actions">
+                      <button type="button" class="btn btn-sm btn-success" onclick="applyAIContent()">
+                        <i class="bi bi-check-lg"></i> 替换
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAIContent()">
+                        <i class="bi bi-x-lg"></i> 取消
+                      </button>
+                    </div>
+                  </div>
+                  <div class="ai-result-content" id="aiContentContent"></div>
+                </div>
+              </div>
             </div>
 
             <!-- 操作按钮 -->
             <div class="d-flex gap-2 justify-content-end">
-              <button type="button" class="btn btn-secondary" onclick="saveDraft()">
-                <i class="bi bi-floppy"></i> 保存草稿
-              </button>
               <button type="button" class="btn btn-info" onclick="previewEmail()">
                 <i class="bi bi-eye"></i> 预览
               </button>
@@ -117,23 +165,59 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3">
-          <input type="text" class="form-control" id="contactSearch" placeholder="搜索联系人...">
+        <!-- 类型切换和搜索 -->
+        <div class="row mb-3">
+          <div class="col-md-12">
+            <div class="btn-group w-100 mb-3" role="group">
+              <button type="button" class="btn btn-outline-primary active" id="btnContacts" onclick="switchRecipientType('contacts')">
+                <i class="bi bi-person-lines-fill"></i> 联系人
+              </button>
+              <button type="button" class="btn btn-outline-primary" id="btnCustomers" onclick="switchRecipientType('customers')">
+                <i class="bi bi-people"></i> 客户
+              </button>
+            </div>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" placeholder="搜索名称、公司或域名..." id="recipientSearch" oninput="searchRecipients()">
+            </div>
+          </div>
         </div>
-        <div class="mb-3">
-          <button class="btn btn-sm btn-outline-primary" onclick="selectAllContacts()">全选</button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">清空</button>
-        </div>
-        <div id="contactList" style="max-height: 400px; overflow-y: auto;">
-          <!-- 联系人列表 -->
-        </div>
-        <div class="mt-3">
-          <span id="selectedContactsCount" class="text-muted">已选择 0 人</span>
+        
+        <!-- 收件人列表 -->
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card">
+              <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0" id="recipientListTitle">联系人列表</h6>
+                  <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectAllRecipients()">全选</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">清空</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <div id="recipientList">
+                  <!-- 收件人列表将通过JavaScript动态加载 -->
+                  <div class="text-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">加载中...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-        <button type="button" class="btn btn-primary" onclick="confirmRecipients()">确定</button>
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <span id="selectedRecipientsCount">已选择 0 人</span>
+          <div>
+            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-primary" onclick="confirmRecipients()">确定</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -165,12 +249,81 @@
   </div>
 </div>
 
+<style>
+/* AI结果预览样式 */
+.ai-result-preview {
+  background: #f0f0f0;
+  border: 2px dashed #667eea;
+  border-radius: 12px;
+  padding: 16px;
+  position: relative;
+}
+
+.ai-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.ai-result-label {
+  font-weight: 600;
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-result-content {
+  background: #e8e8e8;
+  padding: 16px;
+  border-radius: 8px;
+  min-height: 60px;
+  white-space: pre-line;
+  line-height: 1.6;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+/* 原内容样式（深色） */
+.form-control {
+  background: white;
+  color: #212529;
+}
+
+/* 加载状态 */
+.ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #667eea;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.loading-dots {
+  display: inline-block;
+  min-width: 20px;
+}
+</style>
+
 <script>
 // 全局变量
 let selectedRecipients = [];
 let currentTemplate = null;
 let emailPreviews = [];
 let currentPreviewIndex = 0;
+let aiGeneratedTitle = '';
+let aiGeneratedContent = '';
 
 // 页面加载
 document.addEventListener('DOMContentLoaded', async function() {
@@ -376,17 +529,54 @@ function loadTemplate() {
   }
 }
 
+// ==================== 收件人选择相关函数 ====================
+
+// 全局变量
+let currentRecipientType = 'contacts';  // contacts 或 customers
+let allRecipients = [];  // 所有收件人数据
+let filteredRecipients = [];  // 过滤后的收件人数据
+
 // 更新收件人显示
 function updateRecipientDisplay() {
   const recipientsInput = document.getElementById('recipients');
+  const clearBtn = document.getElementById('clearRecipientsBtn');
+  
   if (recipientsInput) {
     if (selectedRecipients.length === 0) {
       recipientsInput.value = '';
-      recipientsInput.placeholder = '请选择收件人';
+      recipientsInput.placeholder = '点击选择收件人';
+      // 隐藏清空按钮
+      if (clearBtn) clearBtn.style.display = 'none';
     } else {
-      recipientsInput.value = `已选择 ${selectedRecipients.length} 位联系人`;
+      // 按邮箱去重，统计唯一收件人数量
+      const uniqueEmails = new Set(selectedRecipients.map(r => r.email));
+      const totalUnique = uniqueEmails.size;
+      
+      // 统计联系人和客户数量
+      const contactCount = selectedRecipients.filter(r => r.type === 'contacts').length;
+      const customerCount = selectedRecipients.filter(r => r.type === 'customers').length;
+      
+      const parts = [];
+      if (contactCount > 0) parts.push(`${contactCount}位联系人`);
+      if (customerCount > 0) parts.push(`${customerCount}位客户`);
+      
+      recipientsInput.value = `已选择 ${parts.join('、')}（共${totalUnique}个邮箱）`;
+      
+      // 显示清空按钮
+      if (clearBtn) clearBtn.style.display = 'inline-block';
     }
   }
+}
+
+// 清空所有收件人
+function clearAllRecipients() {
+  if (selectedRecipients.length > 0 && !confirm('确定要清空所有已选择的收件人吗？')) {
+    return;
+  }
+  selectedRecipients = [];
+  updateRecipientDisplay();
+  console.log('🗑️ 已清空所有收件人');
+  showSuccess('收件人已清空');
 }
 
 // 选择收件人
@@ -394,17 +584,55 @@ function selectRecipients() {
   console.log('✅ 选择收件人');
   const modal = new bootstrap.Modal(document.getElementById('recipientSelectModal'));
   modal.show();
-  loadContactsForSelection();
+  
+  // 默认加载联系人
+  currentRecipientType = 'contacts';
+  document.getElementById('btnContacts').classList.add('active');
+  document.getElementById('btnCustomers').classList.remove('active');
+  document.getElementById('recipientSearch').value = '';
+  
+  loadRecipientsForSelection();
 }
 
-// 加载联系人用于选择
-async function loadContactsForSelection() {
+// 切换收件人类型
+function switchRecipientType(type) {
+  console.log('🔄 切换收件人类型:', type);
+  currentRecipientType = type;
+  
+  // 更新按钮状态
+  document.getElementById('btnContacts').classList.toggle('active', type === 'contacts');
+  document.getElementById('btnCustomers').classList.toggle('active', type === 'customers');
+  
+  // 更新标题
+  document.getElementById('recipientListTitle').textContent = type === 'contacts' ? '联系人列表' : '客户列表';
+  
+  // 清空搜索框
+  document.getElementById('recipientSearch').value = '';
+  
+  // 加载数据（会自动同步显示相同邮箱的选中状态）
+  loadRecipientsForSelection();
+  
+  console.log('📋 当前已选收件人邮箱:', selectedRecipients.map(r => r.email).join(', '));
+}
+
+// 加载收件人列表（统一接口）
+async function loadRecipientsForSelection() {
   try {
-    console.log('🔄 加载联系人列表...');
+    console.log('🔄 加载收件人列表，类型:', currentRecipientType);
+    
+    // 显示加载状态
+    document.getElementById('recipientList').innerHTML = `
+      <div class="text-center p-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      </div>
+    `;
     
     const token = localStorage.getItem('authToken');
+    const endpoint = currentRecipientType === 'contacts' ? '/api/contacts/?pageSize=1000' : '/api/customers?page_size=1000';
     
-    const response = await fetch('/api/contacts/?pageSize=100', {
+    const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -413,64 +641,134 @@ async function loadContactsForSelection() {
     });
     
     const data = await response.json();
-    console.log('📥 联系人数据:', data);
+    console.log('📥 收件人数据:', data);
     
     if (!data.success) {
-      showError('加载联系人失败: ' + (data.message || '未知错误'));
+      showError('加载失败: ' + (data.message || '未知错误'));
       return;
     }
     
-    const contacts = data.contacts || [];
-    window.allContacts = contacts;
+    // 统一数据格式
+    allRecipients = currentRecipientType === 'contacts' ? (data.contacts || []) : (data.customers || []);
+    filteredRecipients = allRecipients;
     
-    let html = '';
-    contacts.forEach(contact => {
-      const isSelected = selectedRecipients.some(r => r.id === contact.id);
-      html += `
-        <div class="contact-item d-flex align-items-center p-2 border-bottom">
-          <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
-                 value="${contact.id}" 
-                 data-contact-name="${contact.name}"
-                 data-contact-email="${contact.email}"
-                 data-contact-company="${contact.company || ''}"
-                 ${isSelected ? 'checked' : ''} 
-                 onchange="toggleRecipient(${contact.id}, this.checked)">
-          <div class="flex-grow-1">
-            <div class="fw-bold">${contact.name}</div>
-            <small class="text-muted">${contact.email} • ${contact.company || '未知公司'}</small>
-          </div>
-        </div>
-      `;
-    });
+    renderRecipientList(filteredRecipients);
     
-    const contactList = document.getElementById('contactList');
-    if (contactList) {
-      contactList.innerHTML = html;
-    }
-    
-    updateSelectedCount();
-    
-    console.log(`✅ 加载了 ${contacts.length} 个联系人`);
+    console.log(`✅ 加载了 ${allRecipients.length} 个${currentRecipientType === 'contacts' ? '联系人' : '客户'}`);
   } catch (error) {
-    console.error('❌ 加载联系人失败:', error);
-    showError('加载联系人失败: ' + error.message);
+    console.error('❌ 加载失败:', error);
+    showError('加载失败: ' + error.message);
+    document.getElementById('recipientList').innerHTML = `
+      <div class="alert alert-danger m-3">加载失败，请重试</div>
+    `;
   }
 }
 
-// 切换收件人选择
-function toggleRecipient(contactId, isSelected) {
-  console.log('✅ 切换收件人:', contactId, isSelected);
+// 渲染收件人列表
+function renderRecipientList(recipients) {
+  if (recipients.length === 0) {
+    document.getElementById('recipientList').innerHTML = `
+      <div class="alert alert-info m-3">暂无数据</div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  recipients.forEach(recipient => {
+    // 检查是否已选中（通过邮箱匹配，不限类型）
+    const isSelected = selectedRecipients.some(r => r.email === recipient.email);
+    html += `
+      <div class="recipient-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer;" onclick="toggleRecipientCheckbox(${recipient.id})">
+        <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
+               value="${recipient.id}" 
+               data-type="${currentRecipientType}"
+               data-name="${recipient.name}"
+               data-email="${recipient.email}"
+               data-company="${recipient.company || ''}"
+               ${isSelected ? 'checked' : ''} 
+               onclick="event.stopPropagation(); toggleRecipient(${recipient.id}, this.checked)">
+        <div class="flex-grow-1">
+          <div class="fw-bold">${recipient.name}</div>
+          <small class="text-muted">${recipient.email}${recipient.company ? ' • ' + recipient.company : ''}</small>
+        </div>
+        <span class="badge ${currentRecipientType === 'contacts' ? 'bg-info' : 'bg-success'}">${currentRecipientType === 'contacts' ? '联系人' : '客户'}</span>
+      </div>
+    `;
+  });
+  
+  document.getElementById('recipientList').innerHTML = html;
+  updateSelectedCount();
+}
+
+// 切换checkbox（点击整行时）
+function toggleRecipientCheckbox(recipientId) {
+  const checkbox = document.querySelector(`.recipient-checkbox[value="${recipientId}"]`);
+  if (checkbox) {
+    checkbox.checked = !checkbox.checked;
+    toggleRecipient(recipientId, checkbox.checked);
+  }
+}
+
+// 搜索收件人
+function searchRecipients() {
+  const searchTerm = document.getElementById('recipientSearch').value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    filteredRecipients = allRecipients;
+  } else {
+    filteredRecipients = allRecipients.filter(recipient => {
+      const name = (recipient.name || '').toLowerCase();
+      const email = (recipient.email || '').toLowerCase();
+      const company = (recipient.company || '').toLowerCase();
+      const domain = (recipient.domain || '').toLowerCase();
+      
+      return name.includes(searchTerm) || 
+             email.includes(searchTerm) || 
+             company.includes(searchTerm) || 
+             domain.includes(searchTerm);
+    });
+  }
+  
+  console.log(`🔍 搜索 "${searchTerm}"，找到 ${filteredRecipients.length} 个结果`);
+  renderRecipientList(filteredRecipients);
+}
+
+// 切换收件人选择（按邮箱同步）
+function toggleRecipient(recipientId, isSelected) {
+  const recipient = allRecipients.find(r => r.id === recipientId);
+  if (!recipient) return;
+  
+  const recipientEmail = recipient.email;
+  console.log('✅ 切换收件人:', recipient.name, recipientEmail, '选中:', isSelected);
   
   if (isSelected) {
-    const contact = window.allContacts.find(c => c.id === contactId);
-    if (contact && !selectedRecipients.some(r => r.id === contactId)) {
-      selectedRecipients.push(contact);
-      console.log('➕ 添加收件人:', contact.name);
+    // 检查是否已经有相同邮箱的人被选中
+    const existingSameEmail = selectedRecipients.find(r => r.email === recipientEmail);
+    
+    if (!existingSameEmail) {
+      // 如果没有相同邮箱，添加当前收件人
+      const recipientWithType = { ...recipient, type: currentRecipientType };
+      selectedRecipients.push(recipientWithType);
+      console.log('➕ 添加收件人:', recipient.name, '邮箱:', recipientEmail, '类型:', currentRecipientType);
+    } else {
+      // 如果已有相同邮箱，检查是否是当前类型
+      if (existingSameEmail.type !== currentRecipientType) {
+        // 不同类型，也添加（同一邮箱可能既是联系人又是客户）
+        const recipientWithType = { ...recipient, type: currentRecipientType };
+        selectedRecipients.push(recipientWithType);
+        console.log('➕ 添加收件人（同邮箱不同类型）:', recipient.name, '类型:', currentRecipientType);
+      } else {
+        console.log('⚠️ 该收件人已在列表中');
+      }
     }
   } else {
+    // 取消选中：移除所有相同邮箱的收件人（包括联系人和客户）
     const beforeLength = selectedRecipients.length;
-    selectedRecipients = selectedRecipients.filter(r => r.id !== contactId);
-    console.log('➖ 移除收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+    selectedRecipients = selectedRecipients.filter(r => r.email !== recipientEmail);
+    console.log('➖ 移除邮箱为', recipientEmail, '的所有收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+    
+    // 刷新列表以同步其他类型的checkbox状态
+    renderRecipientList(filteredRecipients);
   }
   
   updateSelectedCount();
@@ -479,33 +777,35 @@ function toggleRecipient(contactId, isSelected) {
 // 更新选中数量
 function updateSelectedCount() {
   const count = selectedRecipients.length;
-  const countElement = document.getElementById('selectedContactsCount');
+  const countElement = document.getElementById('selectedRecipientsCount');
   if (countElement) {
     countElement.textContent = `已选择 ${count} 人`;
   }
   console.log('📊 当前选中数量:', count);
 }
 
-// 全选联系人
-function selectAllContacts() {
-  const checkboxes = document.querySelectorAll('.recipient-checkbox');
-  checkboxes.forEach(cb => {
-    if (!cb.checked) {
-      cb.checked = true;
-      toggleRecipient(parseInt(cb.value), true);
+// 全选收件人
+function selectAllRecipients() {
+  filteredRecipients.forEach(recipient => {
+    // 检查是否已选中（通过邮箱）
+    if (!selectedRecipients.some(r => r.email === recipient.email)) {
+      const recipientWithType = { ...recipient, type: currentRecipientType };
+      selectedRecipients.push(recipientWithType);
     }
   });
+  
+  // 刷新列表显示
+  renderRecipientList(filteredRecipients);
+  console.log('✅ 全选完成，共选中:', selectedRecipients.length);
 }
 
-// 清空选择
+// 清空选择（清空所有，不分类型）
 function clearSelection() {
-  const checkboxes = document.querySelectorAll('.recipient-checkbox');
-  checkboxes.forEach(cb => {
-    cb.checked = false;
-  });
   selectedRecipients = [];
+  renderRecipientList(filteredRecipients);
   updateSelectedCount();
   updateRecipientDisplay();
+  console.log('🗑️ 已清空所有选择');
 }
 
 // 确认收件人
@@ -519,7 +819,7 @@ function confirmRecipients() {
     modal.hide();
   }
   
-  console.log('📋 选中的联系人列表:', selectedRecipients);
+  console.log('📋 选中的收件人列表:', selectedRecipients);
 }
 
 // 显示已选择的收件人列表
@@ -662,11 +962,6 @@ function insertVariable(variable) {
   textarea.focus();
   
   console.log('✅ 插入变量:', variable);
-}
-
-// 保存草稿
-async function saveDraft() {
-  showInfo('💡 草稿功能开发中...');
 }
 
 // 预览邮件
@@ -935,10 +1230,31 @@ async function sendEmail() {
     console.log('发件邮箱ID:', senderEmailId);
     console.log('是否使用模板:', currentTemplate ? '是' : '否');
     
+    // 分离联系人和客户ID（按邮箱去重）
+    const uniqueEmails = new Set();
+    const contactIds = [];
+    const customerIds = [];
+    
+    selectedRecipients.forEach(r => {
+      if (!uniqueEmails.has(r.email)) {
+        uniqueEmails.add(r.email);
+        if (r.type === 'contacts') {
+          contactIds.push(r.id);
+        } else if (r.type === 'customers') {
+          customerIds.push(r.id);
+        }
+      }
+    });
+    
+    console.log('📋 联系人ID:', contactIds);
+    console.log('📋 客户ID:', customerIds);
+    console.log('📧 唯一邮箱数:', uniqueEmails.size);
+    
     // 构建请求体
     const requestBody = {
       sender_email_binding_id: parseInt(senderEmailId),
-      contact_ids: selectedRecipients.map(r => r.id)
+      contact_ids: contactIds,
+      customer_ids: customerIds
     };
     
     // 如果使用了模板
@@ -1054,5 +1370,306 @@ function showLoading() {
 function hideLoading() {
   document.body.style.cursor = 'default';
 }
+
+// ==================== AI辅助功能 ====================
+
+let loadingDotsInterval = null;
+
+// 启动动态省略号动画
+function startLoadingDots() {
+  let dotCount = 1;
+  loadingDotsInterval = setInterval(() => {
+    const dotsElements = document.querySelectorAll('.loading-dots-title, .loading-dots-content');
+    dotsElements.forEach(el => {
+      if (el) {
+        dotCount = (dotCount % 3) + 1;
+        el.textContent = '.'.repeat(dotCount);
+      }
+    });
+  }, 500);
+}
+
+// 停止动态省略号动画
+function stopLoadingDots() {
+  if (loadingDotsInterval) {
+    clearInterval(loadingDotsInterval);
+    loadingDotsInterval = null;
+  }
+}
+
+// AI生成邮件
+async function aiEnrichEmail() {
+  const title = document.getElementById('emailSubject').value.trim();
+  const content = document.getElementById('emailContent').value.trim();
+  
+  if (!title && !content) {
+    showWarning('请先输入邮件标题或内容');
+    return;
+  }
+  
+  try {
+    // 显示加载状态
+    const titlePreview = document.getElementById('aiTitlePreview');
+    const contentPreview = document.getElementById('aiContentPreview');
+    
+    titlePreview.style.display = '';
+    titlePreview.innerHTML = `
+      <div class="ai-loading">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        <span>AI生成中<span class="loading-dots-title">.</span></span>
+      </div>
+    `;
+    
+    contentPreview.style.display = '';
+    contentPreview.innerHTML = `
+      <div class="ai-loading">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        <span>AI生成中<span class="loading-dots-content">.</span></span>
+      </div>
+    `;
+    
+    // 启动省略号动画
+    startLoadingDots();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'enrich'
+      })
+    });
+    
+    const data = await response.json();
+    
+    // 停止省略号动画
+    stopLoadingDots();
+    
+    if (!data.success) {
+      showError('AI生成失败: ' + data.message);
+      titlePreview.style.display = 'none';
+      contentPreview.style.display = 'none';
+      return;
+    }
+    
+    // 保存AI生成的结果
+    aiGeneratedTitle = data.result.title;
+    aiGeneratedContent = data.result.content;
+    
+    // 显示标题结果
+    if (aiGeneratedTitle) {
+      titlePreview.innerHTML = `
+        <div class="ai-result-preview mt-2">
+          <div class="ai-result-header">
+            <span class="ai-result-label">
+              <i class="bi bi-stars"></i> AI优化后的标题
+            </span>
+            <div class="ai-result-actions">
+              <button type="button" class="btn btn-sm btn-success" onclick="applyAITitle()">
+                <i class="bi bi-check-lg"></i> 替换
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAITitle()">
+                <i class="bi bi-x-lg"></i> 取消
+              </button>
+            </div>
+          </div>
+          <div class="ai-result-content">${aiGeneratedTitle}</div>
+        </div>
+      `;
+    } else {
+      titlePreview.style.display = 'none';
+    }
+    
+    // 显示内容结果
+    if (aiGeneratedContent) {
+      contentPreview.innerHTML = `
+        <div class="ai-result-preview mt-2">
+          <div class="ai-result-header">
+            <span class="ai-result-label">
+              <i class="bi bi-stars"></i> AI优化后的内容
+            </span>
+            <div class="ai-result-actions">
+              <button type="button" class="btn btn-sm btn-success" onclick="applyAIContent()">
+                <i class="bi bi-check-lg"></i> 替换
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAIContent()">
+                <i class="bi bi-x-lg"></i> 取消
+              </button>
+            </div>
+          </div>
+          <div class="ai-result-content">${aiGeneratedContent}</div>
+        </div>
+      `;
+    } else {
+      contentPreview.style.display = 'none';
+    }
+    
+  } catch (error) {
+    console.error('AI生成失败:', error);
+    stopLoadingDots();
+    showError('AI生成失败: ' + error.message);
+    document.getElementById('aiTitlePreview').style.display = 'none';
+    document.getElementById('aiContentPreview').style.display = 'none';
+  }
+}
+
+// 翻译邮件
+async function translateEmail(targetLanguage = null) {
+  const title = document.getElementById('emailSubject').value.trim();
+  const content = document.getElementById('emailContent').value.trim();
+  
+  if (!title && !content) {
+    showWarning('请先输入邮件标题或内容');
+    return;
+  }
+  
+  try {
+    // 显示加载状态
+    const titlePreview = document.getElementById('aiTitlePreview');
+    const contentPreview = document.getElementById('aiContentPreview');
+    
+    titlePreview.style.display = '';
+    titlePreview.innerHTML = `
+      <div class="ai-loading">
+        <div class="spinner-border spinner-border-sm text-info"></div>
+        <span>翻译中<span class="loading-dots-title">.</span></span>
+      </div>
+    `;
+    
+    contentPreview.style.display = '';
+    contentPreview.innerHTML = `
+      <div class="ai-loading">
+        <div class="spinner-border spinner-border-sm text-info"></div>
+        <span>翻译中<span class="loading-dots-content">.</span></span>
+      </div>
+    `;
+    
+    // 启动省略号动画
+    startLoadingDots();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/emails/ai-assist', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        type: 'translate',
+        target_language: targetLanguage
+      })
+    });
+    
+    const data = await response.json();
+    
+    // 停止省略号动画
+    stopLoadingDots();
+    
+    if (!data.success) {
+      showError('翻译失败: ' + data.message);
+      titlePreview.style.display = 'none';
+      contentPreview.style.display = 'none';
+      return;
+    }
+    
+    // 保存翻译结果
+    aiGeneratedTitle = data.result.title;
+    aiGeneratedContent = data.result.content;
+    
+    const langInfo = data.result.detected_language && data.result.target_language 
+      ? ` (${data.result.detected_language} → ${data.result.target_language})`
+      : '';
+    
+    // 显示标题结果
+    if (aiGeneratedTitle) {
+      titlePreview.innerHTML = `
+        <div class="ai-result-preview mt-2">
+          <div class="ai-result-header">
+            <span class="ai-result-label">
+              <i class="bi bi-translate"></i> 翻译后的标题${langInfo}
+            </span>
+            <div class="ai-result-actions">
+              <button type="button" class="btn btn-sm btn-success" onclick="applyAITitle()">
+                <i class="bi bi-check-lg"></i> 替换
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAITitle()">
+                <i class="bi bi-x-lg"></i> 取消
+              </button>
+            </div>
+          </div>
+          <div class="ai-result-content">${aiGeneratedTitle}</div>
+        </div>
+      `;
+    } else {
+      titlePreview.style.display = 'none';
+    }
+    
+    // 显示内容结果
+    if (aiGeneratedContent) {
+      contentPreview.innerHTML = `
+        <div class="ai-result-preview mt-2">
+          <div class="ai-result-header">
+            <span class="ai-result-label">
+              <i class="bi bi-translate"></i> 翻译后的内容${langInfo}
+            </span>
+            <div class="ai-result-actions">
+              <button type="button" class="btn btn-sm btn-success" onclick="applyAIContent()">
+                <i class="bi bi-check-lg"></i> 替换
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="cancelAIContent()">
+                <i class="bi bi-x-lg"></i> 取消
+              </button>
+            </div>
+          </div>
+          <div class="ai-result-content">${aiGeneratedContent}</div>
+        </div>
+      `;
+    } else {
+      contentPreview.style.display = 'none';
+    }
+    
+  } catch (error) {
+    console.error('翻译失败:', error);
+    stopLoadingDots();
+    showError('翻译失败: ' + error.message);
+    document.getElementById('aiTitlePreview').style.display = 'none';
+    document.getElementById('aiContentPreview').style.display = 'none';
+  }
+}
+
+// 应用AI标题
+function applyAITitle() {
+  document.getElementById('emailSubject').value = aiGeneratedTitle;
+  document.getElementById('aiTitlePreview').style.display = 'none';
+  showSuccess('标题已替换');
+}
+
+// 取消AI标题
+function cancelAITitle() {
+  document.getElementById('aiTitlePreview').style.display = 'none';
+  aiGeneratedTitle = '';
+}
+
+// 应用AI内容
+function applyAIContent() {
+  document.getElementById('emailContent').value = aiGeneratedContent;
+  document.getElementById('aiContentPreview').style.display = 'none';
+  showSuccess('内容已替换');
+}
+
+// 取消AI内容
+function cancelAIContent() {
+  document.getElementById('aiContentPreview').style.display = 'none';
+  aiGeneratedContent = '';
+}
 </script>
+
+
 

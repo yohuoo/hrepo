@@ -63,8 +63,11 @@ const authenticateToken = async (req, res, next) => {
       id: user.id,
       username: user.username,
       email: user.email,
+      department_id: user.department_id,
+      role: user.role,
       is_active: user.is_active,
-      is_admin: user.is_admin
+      is_admin: user.is_admin,
+      password_changed: user.password_changed
     };
     req.token = token; // 保存token供后续使用
     
@@ -124,7 +127,67 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+// 检查密码是否已修改（强制修改密码）
+const requirePasswordChange = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: '未登录'
+      });
+    }
+    
+    // 检查是否已修改密码
+    if (!req.user.password_changed) {
+      return res.status(403).json({
+        success: false,
+        message: '请先修改初始密码',
+        requires_password_change: true
+      });
+    }
+    
+    next();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: '验证失败',
+      error: error.message
+    });
+  }
+};
+
+// 角色权限检查中间件
+const requireRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: '未登录'
+      });
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: '权限不足'
+      });
+    }
+    
+    next();
+  };
+};
+
+// 超级管理员权限检查
+const requireSuperAdmin = requireRole(['super_admin']);
+
+// 管理员及以上权限检查
+const requireAdmin = requireRole(['super_admin', 'admin']);
+
 module.exports = {
   authenticateToken,
-  verifyToken
+  verifyToken,
+  requirePasswordChange,
+  requireRole,
+  requireSuperAdmin,
+  requireAdmin
 };
