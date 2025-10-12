@@ -41,8 +41,8 @@
       <div class="col-md-3">
         <label class="form-label">周期类型</label>
         <select class="form-select" id="periodType">
+          <option value="month" selected>月报</option>
           <option value="week">周报</option>
-          <option value="month">月报</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -67,8 +67,8 @@
         </select>
       </div>
       <div class="col-md-2" id="weekField" style="display: none;">
-        <label class="form-label">周数</label>
-        <input type="number" class="form-control" id="reportWeek" min="1" max="53" value="1">
+        <label class="form-label">第几周</label>
+        <input type="number" class="form-control" id="reportWeek" min="1" max="5" value="1" placeholder="1-5">
       </div>
       <div class="col-md-2" id="departmentField" style="display: none;">
         <label class="form-label">选择部门</label>
@@ -168,9 +168,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 周期类型切换
   document.getElementById('periodType').addEventListener('change', function() {
     if (this.value === 'week') {
-      document.getElementById('monthField').style.display = 'none';
+      // 周报：同时显示月份和周数（格式：某年某月第几周）
+      document.getElementById('monthField').style.display = 'block';
       document.getElementById('weekField').style.display = 'block';
     } else {
+      // 月报：只显示月份，隐藏周数
       document.getElementById('monthField').style.display = 'block';
       document.getElementById('weekField').style.display = 'none';
     }
@@ -313,7 +315,7 @@ async function generateReport() {
       },
       body: JSON.stringify({
         year: parseInt(year),
-        month: periodType === 'month' ? parseInt(month) : null,
+        month: parseInt(month),  // 月报和周报都需要月份
         week: periodType === 'week' ? parseInt(week) : null,
         period_type: periodType
       })
@@ -515,6 +517,47 @@ function downloadReport() {
   URL.revokeObjectURL(url);
   
   showSuccess('报告下载成功');
+}
+
+// ==================== Toast提示函数 ====================
+
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showInfo(message) {
+  showToast(message, 'info');
+}
+
+function showToast(message, type = 'info') {
+  // 创建toast元素
+  const toastContainer = document.getElementById('toastContainer') || document.body;
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // 3秒后自动移除
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
 }
 </script>
 

@@ -611,8 +611,45 @@ function debounce(func, wait) {
   };
 }
 
-function showToast(message, type) {
-  console.log(`${type}: ${message}`);
+// ==================== Toast提示函数 ====================
+
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showInfo(message) {
+  showToast(message, 'info');
+}
+
+function showToast(message, type = 'info') {
+  // 创建toast元素
+  const toastContainer = document.getElementById('toastContainer') || document.body;
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // 3秒后自动移除
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
 }
 </script>
 

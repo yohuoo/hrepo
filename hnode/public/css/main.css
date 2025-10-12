@@ -1186,14 +1186,8 @@ body {
 }
 
 /* ==================== 模态框层级修复 ==================== */
-/* 确保模态框及其背景在所有元素之上 */
-.modal-backdrop {
-  z-index: 9990 !important;
-}
-
-.modal {
-  z-index: 9995 !important;
-}
+/* 移除固定z-index，让JavaScript动态管理层级 */
+/* .modal-backdrop 和 .modal 的z-index由JavaScript动态设置 */
 
 /* 特殊处理AI模态框，确保它在最上层 */
 #aiTemplatePreviewModal {

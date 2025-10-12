@@ -214,7 +214,7 @@
         <div class="d-flex justify-content-between align-items-center w-100">
           <span id="selectedRecipientsCount">已选择 0 人</span>
           <div>
-            <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-secondary me-2" onclick="cancelRecipientSelection()">取消</button>
             <button class="btn btn-primary" onclick="confirmRecipients()">确定</button>
           </div>
         </div>
@@ -243,6 +243,46 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
         <button type="button" class="btn btn-primary" onclick="editRecipients()">
           <i class="bi bi-pencil"></i> 编辑收件人
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 发送确认模态框 -->
+<div class="modal fade" id="sendConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">
+          <i class="bi bi-send-check"></i> 确认发送
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning mb-3">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>请确认以下信息：</strong>
+        </div>
+        <div class="mb-3">
+          <label class="text-muted small">收件人数量</label>
+          <div class="fs-5 fw-bold" id="confirmRecipientCount">0 位收件人</div>
+        </div>
+        <div class="mb-3">
+          <label class="text-muted small">邮件主题</label>
+          <div class="fw-bold" id="confirmEmailSubject">-</div>
+        </div>
+        <div>
+          <label class="text-muted small">发件邮箱</label>
+          <div class="fw-bold" id="confirmSenderEmail">-</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-primary" onclick="confirmSendEmail()">
+          <i class="bi bi-send-fill"></i> 确认发送
         </button>
       </div>
     </div>
@@ -319,6 +359,7 @@
 <script>
 // 全局变量
 let selectedRecipients = [];
+let tempSelectedRecipients = []; // 临时选择（模态框中）
 let currentTemplate = null;
 let emailPreviews = [];
 let currentPreviewIndex = 0;
@@ -340,6 +381,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // 检查是否是回复邮件
   checkReplyMode();
+  
+  // 监听收件人选择模态框关闭事件
+  const recipientModal = document.getElementById('recipientSelectModal');
+  if (recipientModal) {
+    recipientModal.addEventListener('hidden.bs.modal', function(event) {
+      // 如果不是通过"确定"按钮关闭的，恢复临时选择
+      // 这里不需要做任何操作，因为tempSelectedRecipients会在下次打开时重新初始化
+      console.log('📋 收件人选择模态框已关闭');
+    });
+  }
 });
 
 // 检查回复模式
@@ -462,15 +513,30 @@ async function loadSenderEmails() {
       const select = document.getElementById('senderEmail');
       select.innerHTML = '<option value="">选择发件邮箱...</option>';
       
+      let defaultEmailId = null;
+      
       data.bindings.forEach(binding => {
         const option = document.createElement('option');
         option.value = binding.id;
         option.textContent = `${binding.email_address}${binding.is_default ? ' (默认)' : ''}`;
-        if (binding.is_default) {
-          option.selected = true;
-        }
         select.appendChild(option);
+        
+        // 记录默认邮箱
+        if (binding.is_default) {
+          defaultEmailId = binding.id;
+        }
       });
+      
+      // 优先选择：默认邮箱 > 唯一邮箱
+      if (defaultEmailId) {
+        select.value = defaultEmailId;
+        console.log('✅ 已自动选择默认邮箱:', defaultEmailId);
+      } else if (data.bindings.length === 1) {
+        select.value = data.bindings[0].id;
+        console.log('✅ 已自动选择唯一邮箱:', data.bindings[0].id);
+      }
+      
+      console.log('✅ 发件邮箱列表加载完成:', data.bindings.length, '个');
     }
   } catch (error) {
     console.error('❌ 加载发件邮箱失败:', error);
@@ -582,6 +648,11 @@ function clearAllRecipients() {
 // 选择收件人
 function selectRecipients() {
   console.log('✅ 选择收件人');
+  
+  // 备份当前选择到临时变量
+  tempSelectedRecipients = JSON.parse(JSON.stringify(selectedRecipients));
+  console.log('📋 备份当前选择:', tempSelectedRecipients.length, '人');
+  
   const modal = new bootstrap.Modal(document.getElementById('recipientSelectModal'));
   modal.show();
   
@@ -676,7 +747,7 @@ function renderRecipientList(recipients) {
   let html = '';
   recipients.forEach(recipient => {
     // 检查是否已选中（通过邮箱匹配，不限类型）
-    const isSelected = selectedRecipients.some(r => r.email === recipient.email);
+    const isSelected = tempSelectedRecipients.some(r => r.email === recipient.email);
     html += `
       <div class="recipient-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer;" onclick="toggleRecipientCheckbox(${recipient.id})">
         <input type="checkbox" class="form-check-input me-3 recipient-checkbox" 
@@ -743,19 +814,19 @@ function toggleRecipient(recipientId, isSelected) {
   
   if (isSelected) {
     // 检查是否已经有相同邮箱的人被选中
-    const existingSameEmail = selectedRecipients.find(r => r.email === recipientEmail);
+    const existingSameEmail = tempSelectedRecipients.find(r => r.email === recipientEmail);
     
     if (!existingSameEmail) {
       // 如果没有相同邮箱，添加当前收件人
       const recipientWithType = { ...recipient, type: currentRecipientType };
-      selectedRecipients.push(recipientWithType);
+      tempSelectedRecipients.push(recipientWithType);
       console.log('➕ 添加收件人:', recipient.name, '邮箱:', recipientEmail, '类型:', currentRecipientType);
     } else {
       // 如果已有相同邮箱，检查是否是当前类型
       if (existingSameEmail.type !== currentRecipientType) {
         // 不同类型，也添加（同一邮箱可能既是联系人又是客户）
         const recipientWithType = { ...recipient, type: currentRecipientType };
-        selectedRecipients.push(recipientWithType);
+        tempSelectedRecipients.push(recipientWithType);
         console.log('➕ 添加收件人（同邮箱不同类型）:', recipient.name, '类型:', currentRecipientType);
       } else {
         console.log('⚠️ 该收件人已在列表中');
@@ -763,9 +834,9 @@ function toggleRecipient(recipientId, isSelected) {
     }
   } else {
     // 取消选中：移除所有相同邮箱的收件人（包括联系人和客户）
-    const beforeLength = selectedRecipients.length;
-    selectedRecipients = selectedRecipients.filter(r => r.email !== recipientEmail);
-    console.log('➖ 移除邮箱为', recipientEmail, '的所有收件人，数量从', beforeLength, '变为', selectedRecipients.length);
+    const beforeLength = tempSelectedRecipients.length;
+    tempSelectedRecipients = tempSelectedRecipients.filter(r => r.email !== recipientEmail);
+    console.log('➖ 移除邮箱为', recipientEmail, '的所有收件人，数量从', beforeLength, '变为', tempSelectedRecipients.length);
     
     // 刷新列表以同步其他类型的checkbox状态
     renderRecipientList(filteredRecipients);
@@ -776,7 +847,7 @@ function toggleRecipient(recipientId, isSelected) {
 
 // 更新选中数量
 function updateSelectedCount() {
-  const count = selectedRecipients.length;
+  const count = tempSelectedRecipients.length;
   const countElement = document.getElementById('selectedRecipientsCount');
   if (countElement) {
     countElement.textContent = `已选择 ${count} 人`;
@@ -788,30 +859,32 @@ function updateSelectedCount() {
 function selectAllRecipients() {
   filteredRecipients.forEach(recipient => {
     // 检查是否已选中（通过邮箱）
-    if (!selectedRecipients.some(r => r.email === recipient.email)) {
+    if (!tempSelectedRecipients.some(r => r.email === recipient.email)) {
       const recipientWithType = { ...recipient, type: currentRecipientType };
-      selectedRecipients.push(recipientWithType);
+      tempSelectedRecipients.push(recipientWithType);
     }
   });
   
   // 刷新列表显示
   renderRecipientList(filteredRecipients);
-  console.log('✅ 全选完成，共选中:', selectedRecipients.length);
+  updateSelectedCount();
+  console.log('✅ 全选完成，共选中:', tempSelectedRecipients.length);
 }
 
 // 清空选择（清空所有，不分类型）
 function clearSelection() {
-  selectedRecipients = [];
+  tempSelectedRecipients = [];
   renderRecipientList(filteredRecipients);
   updateSelectedCount();
-  updateRecipientDisplay();
-  console.log('🗑️ 已清空所有选择');
+  console.log('🗑️ 已清空临时选择');
 }
 
 // 确认收件人
 function confirmRecipients() {
-  console.log('✅ 确认收件人，共选择:', selectedRecipients.length);
+  console.log('✅ 确认收件人，共选择:', tempSelectedRecipients.length);
   
+  // 应用临时选择到正式变量
+  selectedRecipients = JSON.parse(JSON.stringify(tempSelectedRecipients));
   updateRecipientDisplay();
   
   const modal = bootstrap.Modal.getInstance(document.getElementById('recipientSelectModal'));
@@ -820,6 +893,17 @@ function confirmRecipients() {
   }
   
   console.log('📋 选中的收件人列表:', selectedRecipients);
+}
+
+// 取消选择（恢复原始状态）
+function cancelRecipientSelection() {
+  console.log('❌ 取消选择，恢复到打开前的状态');
+  // 不需要做任何操作，因为tempSelectedRecipients在下次打开时会被重置
+  
+  const modal = bootstrap.Modal.getInstance(document.getElementById('recipientSelectModal'));
+  if (modal) {
+    modal.hide();
+  }
 }
 
 // 显示已选择的收件人列表
@@ -1193,7 +1277,7 @@ function confirmAndSend() {
   sendEmail();
 }
 
-// 发送邮件
+// 发送邮件（显示确认对话框）
 async function sendEmail() {
   console.log('✅ 点击发送邮件');
   
@@ -1216,9 +1300,33 @@ async function sendEmail() {
     return;
   }
   
-  if (!confirm(`确定要发送邮件给 ${selectedRecipients.length} 位收件人吗？`)) {
-    return;
+  // 显示确认模态框
+  const uniqueEmails = new Set(selectedRecipients.map(r => r.email));
+  document.getElementById('confirmRecipientCount').textContent = `${uniqueEmails.size} 位收件人`;
+  document.getElementById('confirmEmailSubject').textContent = subject;
+  
+  // 获取发件邮箱文本
+  const senderSelect = document.getElementById('senderEmail');
+  const senderText = senderSelect.options[senderSelect.selectedIndex].text;
+  document.getElementById('confirmSenderEmail').textContent = senderText;
+  
+  const confirmModal = new bootstrap.Modal(document.getElementById('sendConfirmModal'));
+  confirmModal.show();
+}
+
+// 确认发送邮件（实际发送）
+async function confirmSendEmail() {
+  console.log('✅ 确认发送邮件');
+  
+  // 关闭确认模态框
+  const confirmModal = bootstrap.Modal.getInstance(document.getElementById('sendConfirmModal'));
+  if (confirmModal) {
+    confirmModal.hide();
   }
+  
+  const senderEmailId = document.getElementById('senderEmail').value;
+  const subject = document.getElementById('emailSubject').value;
+  const content = document.getElementById('emailContent').value;
   
   try {
     showLoading();
@@ -1362,13 +1470,26 @@ function clearForm() {
 
 // 显示加载
 function showLoading() {
-  // 简单实现
-  document.body.style.cursor = 'wait';
+  // 先移除可能存在的旧遮罩
+  hideLoading();
+  
+  console.log('🔄 显示加载中...');
+  const loadingHTML = `
+    <div class="loading-overlay" id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">加载中...</span>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', loadingHTML);
 }
 
-// 隐藏加载
 function hideLoading() {
-  document.body.style.cursor = 'default';
+  console.log('✅ 隐藏加载中');
+  const loading = document.getElementById('loadingOverlay');
+  if (loading) {
+    loading.remove();
+  }
 }
 
 // ==================== AI辅助功能 ====================
@@ -1668,6 +1789,47 @@ function applyAIContent() {
 function cancelAIContent() {
   document.getElementById('aiContentPreview').style.display = 'none';
   aiGeneratedContent = '';
+}
+
+// ==================== Toast提示函数 ====================
+
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showInfo(message) {
+  showToast(message, 'info');
+}
+
+function showToast(message, type = 'info') {
+  // 创建toast元素
+  const toastContainer = document.getElementById('toastContainer') || document.body;
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // 3秒后自动移除
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
 }
 </script>
 

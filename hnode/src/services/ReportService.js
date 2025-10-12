@@ -62,7 +62,8 @@ class ReportService {
         })
         .catch(error => {
           console.error('❌ AI生成失败，使用降级方案:', error);
-          const fallbackSummary = this.generateFallbackPersonalReport(user, stats, `${year}年${month || week}${periodType === 'month' ? '月' : '周'}`);
+          const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年${month}月第${week}周`;
+          const fallbackSummary = this.generateFallbackPersonalReport(user, stats, periodText);
           existingReport.update({ summary: fallbackSummary });
         });
       
@@ -114,7 +115,8 @@ class ReportService {
       })
       .catch(error => {
         console.error('❌ AI生成失败，使用降级方案:', error);
-        const fallbackSummary = this.generateFallbackPersonalReport(user, stats, `${year}年${month || week}${periodType === 'month' ? '月' : '周'}`);
+        const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年${month}月第${week}周`;
+        const fallbackSummary = this.generateFallbackPersonalReport(user, stats, periodText);
         report.update({ summary: fallbackSummary });
       });
     
@@ -414,17 +416,22 @@ class ReportService {
       endDate = endDateTime.toISOString().split('T')[0];
       
       console.log('📅 月报时间范围:', `${year}年${month}月`, '→', startDate, '至', endDate);
-    } else if (periodType === 'week' && week) {
-      // 周报：根据周数计算（使用UTC时间）
-      const jan1 = new Date(Date.UTC(year, 0, 1));
+    } else if (periodType === 'week' && week && month) {
+      // 周报：基于月份计算该月第几周（使用UTC时间）
+      // 从该月1号开始，计算第N周的日期范围
+      const monthStart = new Date(Date.UTC(year, month - 1, 1));
       const daysToAdd = (week - 1) * 7;
-      const startDateTime = new Date(jan1.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+      const startDateTime = new Date(monthStart.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
       const endDateTime = new Date(startDateTime.getTime() + 6 * 24 * 60 * 60 * 1000);
       
-      startDate = startDateTime.toISOString().split('T')[0];
-      endDate = endDateTime.toISOString().split('T')[0];
+      // 确保不超过当月范围
+      const monthEnd = new Date(Date.UTC(year, month, 0));  // 当月最后一天
+      const actualEndDateTime = endDateTime > monthEnd ? monthEnd : endDateTime;
       
-      console.log('📅 周报时间范围:', `${year}年第${week}周`, '→', startDate, '至', endDate);
+      startDate = startDateTime.toISOString().split('T')[0];
+      endDate = actualEndDateTime.toISOString().split('T')[0];
+      
+      console.log('📅 周报时间范围:', `${year}年${month}月第${week}周`, '→', startDate, '至', endDate);
     } else {
       throw new Error('无效的时间参数');
     }
@@ -437,7 +444,7 @@ class ReportService {
 
   // AI生成个人报告
   async generatePersonalReportWithAI(user, stats, periodType, year, month, week) {
-    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年第${week}周`;
+    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年${month}月第${week}周`;
     
     const prompt = `请为员工生成一份${periodText}的工作报告。
 
@@ -480,7 +487,7 @@ class ReportService {
 
   // AI生成部门报告
   async generateDepartmentReportWithAI(department, memberCount, stats, periodType, year, month, week) {
-    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年第${week}周`;
+    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年${month}月第${week}周`;
     
     const prompt = `请为部门生成一份${periodText}的工作报告。
 
@@ -523,7 +530,7 @@ class ReportService {
 
   // AI生成公司报告
   async generateCompanyReportWithAI(totalUsers, stats, periodType, year, month, week) {
-    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年第${week}周`;
+    const periodText = periodType === 'month' ? `${year}年${month}月` : `${year}年${month}月第${week}周`;
     
     const prompt = `请为公司生成一份${periodText}的运营报告。
 

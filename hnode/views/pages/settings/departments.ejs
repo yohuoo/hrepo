@@ -20,9 +20,11 @@
       <div>
         <h5 class="mb-0">部门列表</h5>
       </div>
-      <button class="btn btn-primary" onclick="showAddDepartmentModal()">
-        <i class="bi bi-plus-lg me-1"></i>添加部门
-      </button>
+      <div>
+        <button class="btn btn-primary" onclick="showAddDepartmentModal()">
+          <i class="bi bi-plus-lg me-1"></i>添加部门
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -326,8 +328,133 @@ let allUsers = [];
 let currentEditingDept = null;
 let currentParentDept = null; // 当前查看的父部门
 
+// ==================== 禁用模态框遮罩层 ====================
+// 直接禁用Bootstrap的backdrop，避免层级冲突问题
+
+let modalStack = []; // 模态框打开顺序栈
+
+// 监听所有模态框的显示事件
+document.addEventListener('show.bs.modal', function(e) {
+  console.log('📝 模态框即将显示:', e.target.id);
+  
+  // 先移除已存在的相同模态框ID（避免重复）
+  const existingIndex = modalStack.indexOf(e.target.id);
+  if (existingIndex > -1) {
+    modalStack.splice(existingIndex, 1);
+    console.log('🔄 移除重复的模态框ID:', e.target.id);
+  }
+  
+  // 将当前模态框添加到栈顶
+  modalStack.push(e.target.id);
+  console.log('📚 模态框栈:', modalStack);
+  
+  // 禁用backdrop
+  e.target.setAttribute('data-bs-backdrop', 'false');
+}, true);
+
+// 监听所有模态框的显示完成事件
+document.addEventListener('shown.bs.modal', function(e) {
+  console.log('✅ 模态框已显示:', e.target.id);
+  
+  // 立即设置z-index，不使用延迟
+  const visibleModals = document.querySelectorAll('.modal.show');
+  
+  console.log(`🔄 当前可见模态框: ${visibleModals.length}`);
+  
+  // 根据打开顺序分配z-index（栈顶最高）
+  const processedModals = new Set();
+  modalStack.forEach((modalId, stackIndex) => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.classList.contains('show') && !processedModals.has(modalId)) {
+      const zIndex = 1050 + (stackIndex + 1) * 10;
+      modal.style.setProperty('z-index', zIndex, 'important');
+      processedModals.add(modalId);
+      console.log(`  - ${modalId} (栈位置${stackIndex}): z-index = ${zIndex}`);
+    }
+  });
+  
+  // 移除所有backdrop（如果有的话）
+  const allBackdrops = document.querySelectorAll('.modal-backdrop');
+  allBackdrops.forEach(backdrop => backdrop.remove());
+}, true);
+
+// 监听所有模态框的关闭事件
+document.addEventListener('hidden.bs.modal', function(e) {
+  console.log('📝 模态框已关闭:', e.target.id);
+  
+  // 从栈中移除关闭的模态框
+  const index = modalStack.indexOf(e.target.id);
+  if (index > -1) {
+    modalStack.splice(index, 1);
+    console.log('📚 模态框栈更新:', modalStack);
+  }
+  
+  // 立即处理，不使用延迟
+  const visibleModals = document.querySelectorAll('.modal.show');
+  
+  console.log(`🧹 清理检查 - 剩余模态框: ${visibleModals.length}`);
+  
+  // 重新分配剩余模态框的z-index
+  const processedModals = new Set();
+  modalStack.forEach((modalId, stackIndex) => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.classList.contains('show') && !processedModals.has(modalId)) {
+      const zIndex = 1050 + (stackIndex + 1) * 10;
+      modal.style.setProperty('z-index', zIndex, 'important');
+      processedModals.add(modalId);
+      console.log(`  - ${modalId} (栈位置${stackIndex}): z-index = ${zIndex}`);
+    }
+  });
+  
+  // 移除所有backdrop
+  const allBackdrops = document.querySelectorAll('.modal-backdrop');
+  allBackdrops.forEach(backdrop => backdrop.remove());
+  
+  // 清理body样式
+  if (visibleModals.length === 0) {
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    modalStack = [];
+    console.log('✅ 清理完成');
+  }
+}, true);
+
+// 强制清理函数（简化版）
+window.forceCleanupBackdrops = function() {
+  console.log('🆘 强制清理所有模态框');
+  
+  const allModals = document.querySelectorAll('.modal');
+  
+  // 关闭所有模态框
+  allModals.forEach(modal => {
+    const instance = bootstrap.Modal.getInstance(modal);
+    if (instance) {
+      instance.hide();
+    }
+  });
+  
+  // 移除所有backdrop
+  const allBackdrops = document.querySelectorAll('.modal-backdrop');
+  allBackdrops.forEach(backdrop => backdrop.remove());
+  
+  // 清理body
+  document.body.classList.remove('modal-open');
+  document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
+  
+  // 清空栈
+  modalStack = [];
+  
+  console.log('✅ 强制清理完成');
+  showSuccess('页面已恢复正常');
+};
+
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🚀 页面加载开始');
+  
+  // 只在确实有问题时才清理（移除自动清理）
+  // setTimeout(window.forceCleanupBackdrops, 500);
   
   // 并行加载，互不阻塞
   Promise.all([
@@ -569,8 +696,9 @@ function viewSubDepartments(parentId, parentName) {
   
   tbody.innerHTML = rows;
   
-  // 显示模态框
-  new bootstrap.Modal(document.getElementById('subDepartmentsModal')).show();
+  // 显示模态框（全局事件监听器会自动处理层级）
+  const subModal = new bootstrap.Modal(document.getElementById('subDepartmentsModal'));
+  subModal.show();
 }
 
 // 查看部门成员
@@ -578,24 +706,8 @@ async function viewDepartmentMembers(deptId, deptName) {
   try {
     document.getElementById('membersDeptName').textContent = deptName;
     
-    const membersModalEl = document.getElementById('departmentMembersModal');
-    const modal = new bootstrap.Modal(membersModalEl);
-    
-    // 监听模态框显示事件，动态调整z-index
-    membersModalEl.addEventListener('shown.bs.modal', function () {
-      // 获取所有当前显示的modal和backdrop
-      const allModals = document.querySelectorAll('.modal.show');
-      const allBackdrops = document.querySelectorAll('.modal-backdrop.show');
-      
-      // 如果有多个模态框，将成员模态框置于最上层
-      if (allModals.length > 1) {
-        membersModalEl.style.zIndex = '1070';
-        if (allBackdrops.length > 0) {
-          allBackdrops[allBackdrops.length - 1].style.zIndex = '1065';
-        }
-      }
-    }, { once: true });
-    
+    // 显示模态框（全局事件监听器会自动处理层级）
+    const modal = new bootstrap.Modal(document.getElementById('departmentMembersModal'));
     modal.show();
     
     // 加载成员数据
@@ -780,7 +892,9 @@ function showAddDepartmentModal() {
   
   updateParentSelect();
   
-  new bootstrap.Modal(document.getElementById('departmentModal')).show();
+  const modalEl = document.getElementById('departmentModal');
+  // 显示模态框（全局事件监听器会自动处理层级）
+  new bootstrap.Modal(modalEl).show();
 }
 
 // 编辑部门
@@ -798,7 +912,9 @@ function editDepartment(id, name, parentId, managerId, description) {
     document.getElementById('departmentManager').value = managerId || '';
   }, 100);
   
-  new bootstrap.Modal(document.getElementById('departmentModal')).show();
+  const modalEl = document.getElementById('departmentModal');
+  // 显示模态框（全局事件监听器会自动处理层级）
+  new bootstrap.Modal(modalEl).show();
 }
 
 // 保存部门
@@ -968,11 +1084,53 @@ async function viewDepartmentDetail(id) {
     `;
     
     document.getElementById('departmentDetailBody').innerHTML = html;
+    // 显示模态框（全局事件监听器会自动处理层级）
     new bootstrap.Modal(document.getElementById('departmentDetailModal')).show();
     
   } catch (error) {
     console.error('获取部门详情失败:', error);
     showError('获取部门详情失败');
   }
+}
+
+// ==================== Toast提示函数 ====================
+
+function showSuccess(message) {
+  showToast(message, 'success');
+}
+
+function showError(message) {
+  showToast(message, 'error');
+}
+
+function showWarning(message) {
+  showToast(message, 'warning');
+}
+
+function showInfo(message) {
+  showToast(message, 'info');
+}
+
+function showToast(message, type = 'info') {
+  // 创建toast元素
+  const toastContainer = document.getElementById('toastContainer') || document.body;
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} position-fixed`;
+  toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+  toast.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // 3秒后自动移除
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.5s';
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
 }
 </script>
