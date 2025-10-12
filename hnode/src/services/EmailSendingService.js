@@ -1,4 +1,5 @@
 const { EmailHistory, Contact, Customer, UserEmailBinding } = require('../models');
+const NotificationService = require('./NotificationService');
 const axios = require('axios');
 
 class EmailSendingService {
@@ -230,6 +231,12 @@ ${originalEmail.content}
 
       console.log(`✅ 回复创建成功: ${replyEmail.receive_address} → ${replyEmail.send_address}`);
 
+      // 发送通知
+      await this.sendEmailNotification(userId, replyEmail, {
+        name: originalEmail.customer_name || originalEmail.receive_address.split('@')[0],
+        type: 'reply'
+      });
+
       // 如果是联系人回复，自动转为客户
       if (originalEmail.contact_id && !originalEmail.customer_id) {
         await this.convertContactToCustomer(originalEmail.contact_id, userId);
@@ -307,6 +314,33 @@ ${originalEmail.content}
     } catch (error) {
       console.error(`❌ 转换联系人为客户失败:`, error);
       throw new Error(`转换联系人为客户失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 发送邮件通知
+   */
+  async sendEmailNotification(userId, emailRecord, senderInfo) {
+    try {
+      const senderName = senderInfo.name || '未知用户';
+      
+      await NotificationService.addNotification(
+        userId,
+        'email',
+        '新邮件',
+        `${senderName}向你发来了邮件`,
+        {
+          emailId: emailRecord.id,
+          senderName: senderName,
+          subject: emailRecord.title,
+          senderEmail: emailRecord.send_address,
+          emailType: 'received'
+        }
+      );
+
+      console.log(`✅ 邮件通知已发送: ${userId} - ${senderName}`);
+    } catch (error) {
+      console.error('发送邮件通知失败:', error);
     }
   }
 }

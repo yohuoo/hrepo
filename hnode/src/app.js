@@ -31,6 +31,7 @@ const salesRoutes = require('./routes/sales');
 const contractsRoutes = require('./routes/contracts');
 const caseStudiesRoutes = require('./routes/caseStudies');
 const pagePermissionsRoutes = require('./routes/pagePermissions');
+const notificationsRoutes = require('./routes/notifications');
 const viewsRoutes = require('./routes/views');
 
 const app = express();
@@ -135,6 +136,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/case-studies', caseStudiesRoutes);
 app.use('/api/page-permissions', pagePermissionsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 const statisticsRoutes = require('./routes/statistics');
 const reportsRoutes = require('./routes/reports');
 app.use('/api/statistics', statisticsRoutes);

@@ -1,0 +1,301 @@
+<%- layout('layouts/main') -%>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-bell me-2"></i>通知系统测试
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                  <h6 class="mb-0">邮件通知测试</h6>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted">模拟收到新邮件的通知</p>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">发件人姓名</label>
+                    <input type="text" class="form-control" id="senderName" placeholder="张三" value="张三">
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">邮件主题</label>
+                    <input type="text" class="form-control" id="emailSubject" placeholder="关于项目讨论" value="关于项目讨论">
+                  </div>
+                  
+                  <button class="btn btn-primary" onclick="addTestEmailNotification()">
+                    <i class="bi bi-envelope me-1"></i>发送邮件通知
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                  <h6 class="mb-0">会议记录通知测试</h6>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted">模拟会议记录处理完成的通知</p>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">会议标题</label>
+                    <input type="text" class="form-control" id="meetingTitle" placeholder="项目评审会议" value="项目评审会议">
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="form-label">会议时长</label>
+                    <input type="text" class="form-control" id="meetingDuration" placeholder="1小时30分钟" value="1小时30分钟">
+                  </div>
+                  
+                  <button class="btn btn-success" onclick="addTestMeetingNotification()">
+                    <i class="bi bi-camera-video me-1"></i>发送会议通知
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <hr class="my-4">
+          
+          <div class="row">
+            <div class="col-12">
+              <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                  <h6 class="mb-0">批量测试</h6>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted">快速生成多个测试通知</p>
+                  
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary" onclick="simulateReceiveEmails()">
+                      <i class="bi bi-envelope me-1"></i>模拟接收3封邮件
+                    </button>
+                    <button class="btn btn-outline-success" onclick="simulateMeetingRecords()">
+                      <i class="bi bi-camera-video me-1"></i>模拟3个会议记录
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="clearAllNotifications()">
+                      <i class="bi bi-trash me-1"></i>清空所有通知
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <hr class="my-4">
+          
+          <div class="row">
+            <div class="col-12">
+              <div class="card border-secondary">
+                <div class="card-header bg-secondary text-white">
+                  <h6 class="mb-0">通知统计</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row text-center">
+                    <div class="col-md-4">
+                      <div class="border rounded p-3">
+                        <h4 class="text-primary mb-1" id="totalNotifications">0</h4>
+                        <small class="text-muted">总通知数</small>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="border rounded p-3">
+                        <h4 class="text-success mb-1" id="emailNotifications">0</h4>
+                        <small class="text-muted">邮件通知</small>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="border rounded p-3">
+                        <h4 class="text-info mb-1" id="meetingNotifications">0</h4>
+                        <small class="text-muted">会议通知</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 添加测试邮件通知
+async function addTestEmailNotification() {
+  const senderName = document.getElementById('senderName').value;
+  const emailSubject = document.getElementById('emailSubject').value;
+  
+  if (!senderName || !emailSubject) {
+    showWarning('请填写发件人姓名和邮件主题');
+    return;
+  }
+  
+  await addTestNotification('email', {
+    senderName: senderName,
+    subject: emailSubject
+  });
+}
+
+// 添加测试会议通知
+async function addTestMeetingNotification() {
+  const meetingTitle = document.getElementById('meetingTitle').value;
+  const meetingDuration = document.getElementById('meetingDuration').value;
+  
+  if (!meetingTitle || !meetingDuration) {
+    showWarning('请填写会议标题和时长');
+    return;
+  }
+  
+  await addTestNotification('meeting', {
+    meetingTitle: meetingTitle,
+    meetingId: Math.floor(Math.random() * 1000)
+  });
+}
+
+// 通用添加测试通知函数
+async function addTestNotification(type, data) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    const endpoint = type === 'email' ? '/api/notifications/test/email' : '/api/notifications/test/meeting';
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error('添加测试通知失败');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showSuccess(result.message);
+      updateNotificationStats();
+    }
+  } catch (error) {
+    console.error('添加测试通知失败:', error);
+    showError('添加测试通知失败');
+  }
+}
+
+// 模拟接收多封邮件
+async function simulateReceiveEmails() {
+  try {
+    showLoading();
+    
+    for (let i = 1; i <= 3; i++) {
+      await addTestNotification('email', {
+        senderName: `用户${i}`,
+        subject: `测试邮件${i}`
+      });
+      
+      // 延迟1秒
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    hideLoading();
+    showSuccess('已模拟接收3封邮件');
+    updateNotificationStats();
+  } catch (error) {
+    hideLoading();
+    showError('模拟接收邮件失败');
+  }
+}
+
+// 模拟多个会议记录
+async function simulateMeetingRecords() {
+  try {
+    showLoading();
+    
+    for (let i = 1; i <= 3; i++) {
+      await addTestNotification('meeting', {
+        meetingTitle: `测试会议${i}`,
+        meetingId: Math.floor(Math.random() * 1000)
+      });
+      
+      // 延迟1秒
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    hideLoading();
+    showSuccess('已模拟生成3个会议记录');
+    updateNotificationStats();
+  } catch (error) {
+    hideLoading();
+    showError('模拟会议记录失败');
+  }
+}
+
+// 清空所有通知
+async function clearAllNotifications() {
+  try {
+    const confirmed = confirm('确定要清空所有通知吗？');
+    if (!confirmed) return;
+    
+    showLoading();
+    
+    await markAllAsRead();
+    
+    hideLoading();
+    showSuccess('所有通知已清空');
+    updateNotificationStats();
+  } catch (error) {
+    hideLoading();
+    showError('清空通知失败');
+  }
+}
+
+// 更新通知统计
+async function updateNotificationStats() {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    // 获取通知列表
+    const response = await fetch('/api/notifications?limit=100', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('获取通知统计失败');
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const notifications = data.notifications;
+      const totalCount = notifications.length;
+      const emailCount = notifications.filter(n => n.type === 'email').length;
+      const meetingCount = notifications.filter(n => n.type === 'meeting').length;
+      
+      document.getElementById('totalNotifications').textContent = totalCount;
+      document.getElementById('emailNotifications').textContent = emailCount;
+      document.getElementById('meetingNotifications').textContent = meetingCount;
+    }
+  } catch (error) {
+    console.error('更新通知统计失败:', error);
+  }
+}
+
+// 页面加载时更新统计
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(updateNotificationStats, 2000);
+});
+</script>

@@ -2,6 +2,7 @@ const { ZoomMeeting, Customer } = require('../models');
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
+const NotificationService = require('./NotificationService');
 
 class ZoomService {
   constructor() {}
@@ -96,6 +97,9 @@ class ZoomService {
         status: 'completed'
       });
 
+      // 发送会议记录完成通知
+      await this.sendMeetingNotification(meeting.user_id, meeting);
+
       console.log(`✅ [ID:${meetingId}] 视频处理完成`);
       return meeting;
     } catch (error) {
@@ -111,6 +115,34 @@ class ZoomService {
       );
       
       throw error;
+    }
+  }
+
+  /**
+   * 发送会议记录完成通知
+   */
+  async sendMeetingNotification(userId, meeting) {
+    try {
+      const duration = meeting.video_file_size ? 
+        `${Math.round(meeting.video_file_size / 1024 / 1024)}MB` : '未知大小';
+      
+      await NotificationService.addNotification(
+        userId,
+        'meeting',
+        '会议记录',
+        '视频会议记录处理完成',
+        {
+          meetingId: meeting.id,
+          meetingTitle: meeting.meeting_title,
+          duration: duration,
+          customerId: meeting.customer_id,
+          status: 'completed'
+        }
+      );
+
+      console.log(`✅ 会议记录通知已发送: ${userId} - ${meeting.meeting_title}`);
+    } catch (error) {
+      console.error('发送会议记录通知失败:', error);
     }
   }
 
