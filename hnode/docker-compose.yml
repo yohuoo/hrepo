@@ -63,6 +63,9 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./src:/app/src                    # 挂载源代码（开发模式）
+      - ./views:/app/views                # 挂载视图文件（开发模式）
+      - ./public:/app/public              # 挂载静态文件（开发模式）
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +74,7 @@ services:
     restart: unless-stopped
     networks:
       - hnode_network
-    command: sh -c "npm run migrate && node src/app.js"
+    command: sh -c "sleep 3 && node src/app.js"
 
 volumes:
   postgres_data:

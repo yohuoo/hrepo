@@ -38,19 +38,19 @@
 <div class="card">
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-fixed mb-0">
         <thead class="table-light">
           <tr>
-            <th>姓名</th>
-            <th>邮箱地址</th>
-            <th>公司</th>
-            <th>往来邮件次数</th>
-            <th>沟通进度</th>
-            <th>客户兴趣度</th>
-            <th>成交状态</th>
-            <th>合同管理</th>
-            <th>最近沟通时间</th>
-            <th width="100">操作</th>
+            <th class="col-name">姓名</th>
+            <th class="col-email">邮箱地址</th>
+            <th class="col-company">公司</th>
+            <th class="col-count">邮件次数</th>
+            <th class="col-progress">进度</th>
+            <th class="col-interest">客户兴趣度</th>
+            <th class="col-deal">成交状态</th>
+            <th class="col-contract">合同管理</th>
+            <th class="col-date">最近沟通时间</th>
+            <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody id="customerTableBody">
@@ -372,6 +372,8 @@ let currentMeetingDataInCustomer = null; // 保存当前会议的完整数据（
 
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ 客户页面已加载');
+  console.log('🔍 检查认证token:', localStorage.getItem('authToken') ? '存在' : '不存在');
+  console.log('🔍 检查页面元素:', document.getElementById('customerTableBody') ? '存在' : '不存在');
   await loadCustomers();
   
   const searchInput = document.getElementById('searchKeyword');
@@ -388,9 +390,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function loadCustomers(page = 1) {
   try {
     console.log('🔄 加载客户列表，页码:', page);
+    console.log('🔍 当前页面变量:', { currentPage, pageSize, currentFilters });
     
     const token = localStorage.getItem('authToken');
+    console.log('🔍 Token长度:', token ? token.length : 0);
     if (!token) {
+      console.log('❌ 没有认证token，跳转到登录页');
       showWarning('请先登录');
       window.location.href = '/login';
       return;
@@ -450,7 +455,7 @@ function renderCustomerTable(customers) {
   if (customers.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-center p-5">
+        <td colspan="11" class="text-center p-5">
           <div class="empty-state">
             <i class="bi bi-people"></i>
             <h5>暂无客户</h5>
@@ -479,21 +484,26 @@ function renderCustomerTable(customers) {
     
     html += `
       <tr class="customer-row" data-customer-id="${customer.id}">
-        <td>
+        <td class="col-name">
+          <!-- 客户姓名显示（头像+姓名，可点击查看详情） -->
           <div class="d-flex align-items-center">
-            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewCustomerDetail(${customer.id});" title="点击查看客户详情">
+            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewCustomerDetail(${customer.id});">
               ${getInitials(customer.name)}
             </div>
-            <div>
-              <div class="fw-bold">${customer.name}</div>
+            <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="viewCustomerDetail(${customer.id});">
+              <div class="fw-bold" style="color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${customer.name}</div>
             </div>
           </div>
         </td>
-        <td>${customer.email}</td>
-        <td>${customer.company || '-'}</td>
-        <td>${customer.email_count || 0}</td>
-        <td>${progressBadge}</td>
-        <td>
+        <td class="col-email">
+          <span class="text-ellipsis" data-bs-toggle="tooltip" data-bs-placement="top" title="${customer.email}">${customer.email}</span>
+        </td>
+        <td class="col-company">
+          <span class="text-ellipsis" data-bs-toggle="tooltip" data-bs-placement="top" title="${customer.company || '-'}">${customer.company || '-'}</span>
+        </td>
+        <td class="col-count">${customer.email_count || 0}</td>
+        <td class="col-progress">${progressBadge}</td>
+        <td class="col-interest">
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
               ${interestBadge}
@@ -506,7 +516,7 @@ function renderCustomerTable(customers) {
             </ul>
           </div>
         </td>
-        <td>
+        <td class="col-deal">
           <div class="dropdown">
             <button class="btn btn-sm ${customer.deal_status === '已成交' ? 'btn-success' : 'btn-outline-secondary'} dropdown-toggle" type="button" data-bs-toggle="dropdown">
               ${customer.deal_status || '未成交'}
@@ -517,7 +527,7 @@ function renderCustomerTable(customers) {
             </ul>
           </div>
         </td>
-        <td>
+        <td class="col-contract">
           <div class="btn-group btn-group-sm">
             ${customer.deal_status === '已成交' ? `
               <button class="btn btn-outline-primary" 
@@ -541,8 +551,8 @@ function renderCustomerTable(customers) {
             `}
           </div>
         </td>
-        <td>${customer.last_communication_time ? formatDate(customer.last_communication_time) : '-'}</td>
-        <td>
+        <td class="col-date">${customer.last_communication_time ? formatDate(customer.last_communication_time) : '-'}</td>
+        <td class="col-actions">
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
               <i class="bi bi-three-dots-vertical"></i>
@@ -573,6 +583,12 @@ function renderCustomerTable(customers) {
   
   tbody.innerHTML = html;
   console.log('✅ 客户表格渲染完成');
+  
+  // 初始化Bootstrap Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(tooltipTriggerEl => {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
 }
 
 function renderPagination(current, total) {

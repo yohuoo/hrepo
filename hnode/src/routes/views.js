@@ -246,15 +246,6 @@ router.get('/reports', checkAuth, checkPagePermission('reports'), (req, res) => 
   });
 });
 
-// 通知测试页面
-router.get('/test/notifications', checkAuth, (req, res) => {
-  res.render('pages/test/notifications', {
-    title: '通知系统测试 - CRM系统',
-    user: req.user,
-    currentPath: '/test/notifications'
-  });
-});
-
 // 案例总结页面
 router.get('/case-studies', checkAuth, checkPagePermission('case_studies'), (req, res) => {
   res.render('pages/case-studies/index', {

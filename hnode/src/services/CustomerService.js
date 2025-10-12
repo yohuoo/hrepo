@@ -42,21 +42,21 @@ class CustomerService {
       } = options;
 
       // 构建SQL WHERE条件
-      let sqlWhere = `user_id = ${userId}`;
+      let sqlWhere = `c.user_id = ${userId}`;
       const replacements = [];
       
       if (search) {
-        sqlWhere += ` AND (name ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1 OR email ILIKE $1 OR company ILIKE $1)`;
+        sqlWhere += ` AND (c.name ILIKE $1 OR c.first_name ILIKE $1 OR c.last_name ILIKE $1 OR c.email ILIKE $1 OR c.company ILIKE $1)`;
         replacements.push(`%${search}%`);
       }
       
       if (communicationProgress) {
-        sqlWhere += ` AND communication_progress = $${replacements.length + 1}`;
+        sqlWhere += ` AND c.communication_progress = $${replacements.length + 1}`;
         replacements.push(communicationProgress);
       }
       
       if (interestLevel) {
-        sqlWhere += ` AND interest_level = $${replacements.length + 1}`;
+        sqlWhere += ` AND c.interest_level = $${replacements.length + 1}`;
         replacements.push(interestLevel);
       }
       
@@ -67,7 +67,7 @@ class CustomerService {
       
       // 获取总数
       const [countResult] = await sequelize.query(
-        `SELECT COUNT(*) as total FROM customers WHERE ${sqlWhere}`,
+        `SELECT COUNT(*) as total FROM customers c WHERE ${sqlWhere}`,
         { 
           bind: replacements,
           raw: true 
@@ -75,15 +75,20 @@ class CustomerService {
       );
       const total = parseInt(countResult[0].total);
       
-      // 获取客户数据（包含deal_status）
+      // 获取客户数据（包含deal_status和实时统计的email_count）
       const [customers] = await sequelize.query(
         `SELECT 
-          id, user_id, name, first_name, last_name, email, company,
-          email_count, communication_progress, interest_level, deal_status,
-          last_communication_time, created_at, updated_at
-         FROM customers 
+          c.id, c.user_id, c.name, c.first_name, c.last_name, c.email, c.company,
+          COALESCE(COUNT(DISTINCT eh.id), 0)::integer as email_count,
+          c.communication_progress, c.interest_level, c.deal_status,
+          c.last_communication_time, c.created_at, c.updated_at
+         FROM customers c
+         LEFT JOIN email_history eh ON (eh.customer_id = c.id)
          WHERE ${sqlWhere}
-         ORDER BY created_at DESC
+         GROUP BY c.id, c.user_id, c.name, c.first_name, c.last_name, c.email, c.company,
+                  c.communication_progress, c.interest_level, c.deal_status,
+                  c.last_communication_time, c.created_at, c.updated_at
+         ORDER BY c.created_at DESC
          LIMIT ${pageSize} OFFSET ${offset}`,
         { 
           bind: replacements,

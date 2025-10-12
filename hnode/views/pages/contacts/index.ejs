@@ -49,19 +49,19 @@
 <div class="card">
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-fixed mb-0">
         <thead class="table-light">
           <tr>
-            <th width="50">
+            <th style="width: 50px;">
               <input type="checkbox" id="selectAllContacts" onchange="toggleAllContacts()">
             </th>
-            <th>联系人姓名</th>
-            <th>电子邮箱</th>
-            <th>公司</th>
-            <th>职位</th>
-            <th>创建日期</th>
-            <th>标签</th>
-            <th width="100">操作</th>
+            <th class="col-name">联系人姓名</th>
+            <th class="col-email">电子邮箱</th>
+            <th class="col-company">公司</th>
+            <th class="col-status">职位</th>
+            <th class="col-date">创建日期</th>
+            <th class="col-tags">标签</th>
+            <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody id="contactTableBody">
@@ -408,25 +408,33 @@ function renderContactTable(contacts) {
     
     html += `
       <tr class="contact-row" data-contact-id="${contact.id}">
-        <td>
+        <td style="width: 50px;">
           <input type="checkbox" class="contact-checkbox" value="${contact.id}" ${isSelected ? 'checked' : ''} onchange="toggleContactSelection(${contact.id})">
         </td>
-        <td>
+        <td class="col-name">
           <div class="d-flex align-items-center">
-            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewContact(${contact.id});" title="点击查看联系人详情">
+            <div class="avatar-circle me-2" style="cursor: pointer;" onclick="event.stopPropagation(); viewContact(${contact.id});">
               ${getInitials(contact.name)}
             </div>
-            <div>
-              <div class="fw-bold">${contact.name || '-'}</div>
+            <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="viewContact(${contact.id});">
+              <div class="fw-bold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${contact.name || '-'}</div>
             </div>
           </div>
         </td>
-        <td>${contact.email}</td>
-        <td>${contact.company || '-'}</td>
-        <td>${contact.position || '-'}</td>
-        <td>${formatDate(contact.created_at)}</td>
-        <td>${tags || '-'}</td>
-        <td>
+        <td class="col-email">
+          <span class="text-ellipsis" data-bs-toggle="tooltip" data-bs-placement="top" title="${contact.email}">${contact.email}</span>
+        </td>
+        <td class="col-company">
+          <span class="text-ellipsis" data-bs-toggle="tooltip" data-bs-placement="top" title="${contact.company || '-'}">${contact.company || '-'}</span>
+        </td>
+        <td class="col-status">
+          <span class="text-ellipsis" data-bs-toggle="tooltip" data-bs-placement="top" title="${contact.position || '-'}">${contact.position || '-'}</span>
+        </td>
+        <td class="col-date">${formatDate(contact.created_at)}</td>
+        <td class="col-tags">
+          <div class="text-ellipsis">${tags || '-'}</div>
+        </td>
+        <td class="col-actions">
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
               <i class="bi bi-three-dots-vertical"></i>
@@ -457,6 +465,12 @@ function renderContactTable(contacts) {
   
   tbody.innerHTML = html;
   console.log('✅ 联系人表格渲染完成');
+  
+  // 初始化Bootstrap Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(tooltipTriggerEl => {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
 }
 
 function renderPagination(current, total) {
