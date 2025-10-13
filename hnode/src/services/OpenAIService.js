@@ -15,12 +15,12 @@ class OpenAIService {
         model: config.openai.model,
         messages: [
           {
-            role: 'system',
-            content: '你是一个专业的商业信息搜索助手。请根据用户的要求搜索相关的公司信息，并以JSON格式返回结果。不要包含任何解释性文字，只返回JSON数据。'
+            "role": "system",
+            "content": "你是一名专业的商业情报分析助手，擅长为指定公司寻找潜在客户。你的任务是根据用户提供的公司主营业务，分析其潜在客户画像，并检索符合该画像的企业信息。输出时请仅返回JSON数据，不要包含解释性文字。"
           },
           {
-            role: 'user',
-            content: '请搜索全球代糖公司、甜味剂公司的相关信息，包括公司名称、网站、描述、国家和城市。请返回20家公司的信息。'
+            "role": "user",
+            "content": "浩天科技是一家专注于代糖、甜味剂（如甜叶菊、赤藓糖醇、三氯蔗糖等）研发和销售的企业。请帮我搜索全球范围内**可能成为浩天科技客户的公司**，例如食品制造商、饮料公司、健康食品品牌、糖尿病食品厂商、餐饮连锁集团等。请返回20家潜在客户的公司信息，字段包括：company_name、website、description、country、city。"
           }
         ],
         tools: [
@@ -28,7 +28,7 @@ class OpenAIService {
             type: 'function',
             function: {
               name: 'search_companies',
-              description: '搜索代糖和甜味剂公司信息',
+              description: '搜索浩天科技的潜在客户',
               parameters: {
                 type: 'object',
                 properties: {

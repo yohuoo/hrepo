@@ -781,7 +781,7 @@ async function searchHunter() {
   try {
     showLoading();
     const response = await axios.get('/api/hunter/domain-search', {
-      params: { domain: domain, limit: 20 }
+      params: { domain: domain, limit: 10 }
     });
     
     const contacts = response.data.contacts;
@@ -814,7 +814,23 @@ async function searchHunter() {
     window.hunterContacts = contacts;
     
   } catch (error) {
-    showToast(error.response?.data?.message || '搜索失败', 'danger');
+    console.error('❌ Hunter搜索错误:', error);
+    console.error('响应数据:', error.response?.data);
+    
+    let errorMessage = '搜索失败';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    showToast(errorMessage, 'danger');
+    $('#hunterResults').html(`<div class="alert alert-danger">
+      <strong>错误:</strong> ${errorMessage}<br>
+      <small>请检查Hunter.io API密钥是否正确配置</small>
+    </div>`);
   } finally {
     hideLoading();
   }
@@ -823,7 +839,15 @@ async function searchHunter() {
 async function importContact(index) {
   const contact = window.hunterContacts[index];
   
+  // 获取按钮元素，用于显示导入状态
+  const buttonElement = event.target.closest('button');
+  const originalButtonText = buttonElement.innerHTML;
+  
   try {
+    // 禁用按钮并显示加载状态
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>导入中...';
+    
     await axios.post('/api/contacts/', {
       name: contact.name,
       first_name: contact.first_name,
@@ -834,11 +858,23 @@ async function importContact(index) {
       position: contact.position
     });
     
+    // 导入成功，更新按钮状态
+    buttonElement.innerHTML = '<i class="bi bi-check-circle"></i> 已导入';
+    buttonElement.classList.remove('btn-primary');
+    buttonElement.classList.add('btn-success');
+    
     showToast('联系人导入成功', 'success');
-    $('#hunterSearchModal').modal('hide');
-    await loadContacts(1);
+    
+    // 在后台刷新联系人列表，但不关闭弹窗
+    loadContacts(1);
+    
   } catch (error) {
-    showToast(error.response?.data?.message || '导入失败', 'danger');
+    // 导入失败，恢复按钮状态
+    buttonElement.disabled = false;
+    buttonElement.innerHTML = originalButtonText;
+    
+    const errorMsg = error.response?.data?.message || '导入失败';
+    showToast(errorMsg, 'danger');
   }
 }
 
