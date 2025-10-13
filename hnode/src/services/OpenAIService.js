@@ -5,22 +5,37 @@ class OpenAIService {
   constructor() {
     this.client = new OpenAI({
       apiKey: config.openai.apiKey,
-      baseURL: config.openai.baseUrl
+      baseURL: config.openai.baseUrl,
+      timeout: config.openai.timeout,
+      maxRetries: 2  // OpenAI SDK内置重试
     });
   }
 
-  async searchCompaniesWithFunctionCall(maxResults = 20) {
+  async searchCompaniesWithFunctionCall(maxResults = 20, excludeCompanies = [], retryCount = 0) {
+    const MAX_RETRIES = 3;
+    
     try {
+      // 构建排除公司的文本（简化格式，节省token）
+      let excludeText = '';
+      if (excludeCompanies && excludeCompanies.length > 0) {
+        // 只显示公司名称，不显示域名，节省token
+        const companyNames = excludeCompanies.map(c => c.name).join(', ');
+        excludeText = `\n\n**重要：以下${excludeCompanies.length}家公司已搜索过，请排除：${companyNames}**`;
+        console.log(`🚫 排除最近 ${excludeCompanies.length} 家已搜索公司`);
+      }
+      
+      console.log(`🔄 调用OpenAI API（尝试 ${retryCount + 1}/${MAX_RETRIES + 1}）...`);
+      
       const response = await this.client.chat.completions.create({
         model: config.openai.model,
         messages: [
           {
             "role": "system",
-            "content": "你是一名专业的商业情报分析助手，擅长为指定公司寻找潜在客户。你的任务是根据用户提供的公司主营业务，分析其潜在客户画像，并检索符合该画像的企业信息。输出时请仅返回JSON数据，不要包含解释性文字。"
+            "content": "你是一名专业的商业情报分析助手，擅长为指定公司寻找潜在客户。你的任务是根据用户提供的公司主营业务，分析其潜在客户画像，并检索符合该画像的企业信息。输出时请仅返回JSON数据，不要包含解释性文字。**请确保返回的公司都是新的、不重复的公司。**"
           },
           {
             "role": "user",
-            "content": "浩天科技是一家专注于代糖、甜味剂（如甜叶菊、赤藓糖醇、三氯蔗糖等）研发和销售的企业。请帮我搜索全球范围内**可能成为浩天科技客户的公司**，例如食品制造商、饮料公司、健康食品品牌、糖尿病食品厂商、餐饮连锁集团等。请返回20家潜在客户的公司信息，字段包括：company_name、website、description、country、city。"
+            "content": `浩天科技是一家专注于代糖、甜味剂（如甜叶菊、赤藓糖醇、三氯蔗糖等）研发和销售的企业。请帮我搜索全球范围内**可能成为浩天科技客户的公司**，例如食品制造商、饮料公司、健康食品品牌、糖尿病食品厂商、餐饮连锁集团等。请返回20家**新的、不重复的**潜在客户的公司信息，字段包括：company_name、website、description、country、city。${excludeText}`
           }
         ],
         tools: [
@@ -68,7 +83,7 @@ class OpenAIService {
           }
         ],
         tool_choice: { type: 'function', function: { name: 'search_companies' } },
-        max_completion_tokens: config.openai.maxTokens
+        max_completion_tokens: 16000  // 增加到16000，为GPT-5的推理token预留空间
         // 注意：GPT-5模型不支持自定义temperature参数
       });
 
@@ -93,7 +108,31 @@ class OpenAIService {
         raw_response: response
       };
     } catch (error) {
-      console.error('OpenAI API调用失败:', error);
+      console.error(`❌ OpenAI API调用失败（尝试 ${retryCount + 1}/${MAX_RETRIES + 1}）:`, error.message);
+      
+      // 如果是网络错误、超时或5xx错误，且未达到最大重试次数，则重试
+      const shouldRetry = retryCount < MAX_RETRIES && (
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.message.includes('timeout') ||
+        error.message.includes('network') ||
+        error.status >= 500
+      );
+      
+      if (shouldRetry) {
+        console.log(`🔄 等待 ${(retryCount + 1) * 2} 秒后重试...`);
+        await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+        return this.searchCompaniesWithFunctionCall(maxResults, excludeCompanies, retryCount + 1);
+      }
+      
+      // 记录详细错误信息
+      console.error('OpenAI API详细错误信息:');
+      console.error('  - 错误类型:', error.constructor.name);
+      console.error('  - 错误代码:', error.code);
+      console.error('  - 错误消息:', error.message);
+      console.error('  - HTTP状态:', error.status);
+      console.error('  - 响应数据:', error.response?.data);
+      
       return {
         success: false,
         companies: [],

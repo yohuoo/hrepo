@@ -64,18 +64,31 @@ class HunterService {
         // Hunter.io返回的公司名称在data.organization字段
         const organizationName = response.data.data.organization || cleanDomain;
         
-        const contacts = response.data.data.emails.map(emailData => ({
-          name: emailData.first_name && emailData.last_name 
-            ? `${emailData.first_name} ${emailData.last_name}` 
-            : emailData.first_name || emailData.last_name || 'Unknown',
-          first_name: emailData.first_name || null,
-          last_name: emailData.last_name || null,
-          position: emailData.position || null,
-          company: organizationName, // 使用从Hunter.io获取的公司名
-          domain: cleanDomain, // 添加域名字段
-          email: emailData.value || null,
-          description: emailData.position ? `${emailData.position} at ${organizationName}` : `Contact at ${organizationName}`
-        }));
+        const contacts = response.data.data.emails.map(emailData => {
+          // 构建姓名：优先使用first_name + last_name，否则使用邮箱用户名
+          let name = '';
+          if (emailData.first_name && emailData.last_name) {
+            name = `${emailData.first_name} ${emailData.last_name}`;
+          } else if (emailData.first_name || emailData.last_name) {
+            name = emailData.first_name || emailData.last_name;
+          } else if (emailData.value) {
+            // 从邮箱地址提取用户名
+            name = emailData.value.split('@')[0];
+          } else {
+            name = 'Unknown';
+          }
+          
+          return {
+            name: name,
+            first_name: emailData.first_name || null,
+            last_name: emailData.last_name || null,
+            position: emailData.position || null,
+            company: organizationName, // 使用从Hunter.io获取的公司名
+            domain: cleanDomain, // 添加域名字段
+            email: emailData.value || null,
+            description: emailData.position ? `${emailData.position} at ${organizationName}` : `Contact at ${organizationName}`
+          };
+        });
 
         return {
           success: true,

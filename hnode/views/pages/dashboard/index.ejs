@@ -1,6 +1,13 @@
 <!-- 海外客户搜索主页面 -->
 <div class="overseas-search-hero">
-  <div class="container-fluid">
+  <div class="container-fluid position-relative">
+    <!-- 右上角历史记录按钮 -->
+    <div class="position-absolute top-0 end-0 mt-3 me-3">
+      <button class="btn btn-outline-secondary" onclick="showSearchHistory()">
+        <i class="bi bi-clock-history"></i> 历史记录 (<span id="historyCount">0</span>)
+      </button>
+    </div>
+    
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="search-hero-card">
@@ -51,7 +58,6 @@
                   <th>序号</th>
                   <th>公司名称</th>
                   <th>公司简介</th>
-                  <th>邮箱</th>
                   <th>域名</th>
                   <th>国家</th>
                   <th>城市</th>
@@ -70,8 +76,8 @@
 </div>
 
 <!-- 联系人列表模态框 -->
-<div class="modal fade" id="contactListModal" tabindex="-1" aria-labelledby="contactListModalLabel">
-  <div class="modal-dialog modal-xl">
+<div class="modal fade" id="contactListModal" tabindex="-1" aria-labelledby="contactListModalLabel" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="contactListModalLabel">潜在联系人列表</h5>
@@ -80,7 +86,12 @@
       <div class="modal-body">
         <div class="row mb-3">
           <div class="col-md-6">
-            <input type="text" class="form-control" id="contactSearchInput" placeholder="搜索联系人">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="contactSearchInput" 
+                     placeholder="搜索姓名、职位、邮箱..." 
+                     onkeyup="filterContactList()">
+            </div>
           </div>
           <div class="col-md-6">
             <div class="d-flex gap-2">
@@ -119,7 +130,9 @@
           </div>
           <div>
             <button class="btn btn-secondary me-2" data-bs-dismiss="modal">取消</button>
-            <button class="btn btn-primary" onclick="proceedToEmailTemplate()">下一步</button>
+            <button class="btn btn-primary" onclick="batchAddContacts()">
+              <i class="bi bi-person-plus"></i> 批量添加联系人
+            </button>
           </div>
         </div>
       </div>
@@ -127,95 +140,95 @@
   </div>
 </div>
 
-<!-- 邮件模板选择模态框 -->
-<div class="modal fade" id="emailTemplateModal" tabindex="-1" aria-labelledby="emailTemplateModalLabel">
-  <div class="modal-dialog modal-xl">
+<!-- 搜索历史记录模态框 -->
+<div class="modal fade" id="searchHistoryModal" tabindex="-1" data-bs-keyboard="true">
+  <div class="modal-dialog modal-fullscreen">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="emailTemplateModalLabel">选择邮件模板</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title">
+          <i class="bi bi-clock-history"></i> 搜索历史记录
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="clearHistorySelection()"></button>
       </div>
       <div class="modal-body">
-        <div class="row">
-          <div class="col-md-4">
-            <div class="card">
-              <div class="card-header">
-                <h6>邮件模板</h6>
-                <button class="btn btn-sm btn-primary" onclick="createNewTemplate()">
-                  <i class="bi bi-plus"></i> 新建
-                </button>
+        <!-- 统计信息 -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> 
+              总共搜索过 <strong id="statsTotal">0</strong> 家公司
               </div>
-              <div class="card-body">
-                <div class="list-group" id="templateList">
-                  <!-- 模板列表将通过JavaScript动态加载 -->
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="col-md-8">
-            <div class="card">
-              <div class="card-header">
-                <h6>邮件预览</h6>
-                <div class="btn-group" role="group">
-                  <button class="btn btn-sm btn-outline-primary" onclick="previousPreview()">
-                    <i class="bi bi-chevron-left"></i> 上一个
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary" onclick="nextPreview()">
-                    下一个 <i class="bi bi-chevron-right"></i>
+        
+        <!-- 搜索过滤 -->
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control" id="historySearch" 
+                     placeholder="搜索公司名称、域名、关键词..." 
+                     onkeyup="debounceHistorySearch()">
+              <button class="btn btn-outline-primary" onclick="loadSearchHistory(1)">
+                <i class="bi bi-arrow-clockwise"></i> 刷新
                   </button>
                 </div>
               </div>
-              <div class="card-body">
-                <div id="emailPreviewContent">
-                  <!-- 邮件预览内容将通过JavaScript动态加载 -->
                 </div>
+        
+        <!-- 历史记录表格 -->
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th width="50">
+                  <input type="checkbox" id="selectAllHistory" onchange="toggleAllHistory()">
+                </th>
+                <th>序号</th>
+                <th>公司名称</th>
+                <th>公司简介</th>
+                <th>网站/域名</th>
+                <th>位置</th>
+                <th>搜索时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr>
+                <td colspan="8" class="text-center">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
               </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
             </div>
-          </div>
-        </div>
+
+        <!-- 分页 -->
+        <nav>
+          <ul class="pagination justify-content-center" id="historyPagination"></ul>
+        </nav>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-        <button class="btn btn-primary" onclick="proceedToEmailSettings()">下一步</button>
+        <div class="d-flex justify-content-between w-100 align-items-center">
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-success" onclick="exportSelectedHistory()">
+              <i class="bi bi-file-earmark-arrow-down"></i> 导出选中
+            </button>
+            <button type="button" class="btn btn-outline-info" onclick="exportAllHistory()">
+              <i class="bi bi-download"></i> 导出全部
+            </button>
+            <button type="button" class="btn btn-danger" onclick="batchDeleteHistory()">
+              <i class="bi bi-trash"></i> 批量删除 (<span id="selectedHistoryCount">0</span>)
+            </button>
       </div>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="clearHistorySelection()">关闭</button>
     </div>
   </div>
 </div>
-
-<!-- 邮件发送设置模态框 -->
-<div class="modal fade" id="emailSettingsModal" tabindex="-1" aria-labelledby="emailSettingsModalLabel">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="emailSettingsModalLabel">邮件发送设置</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">选择发件邮箱</label>
-          <select class="form-select" id="senderEmailSelect">
-            <!-- 发件邮箱选项将通过JavaScript动态加载 -->
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">发送时间</label>
-          <select class="form-select" id="sendTimeSelect">
-            <option value="immediate">立即发送</option>
-            <option value="scheduled">定时发送</option>
-          </select>
-        </div>
-        <div class="mb-3" id="scheduleTimeDiv" style="display: none;">
-          <label class="form-label">发送时间</label>
-          <input type="datetime-local" class="form-control" id="scheduleTime">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-        <button class="btn btn-primary" onclick="sendEmails()">
-          <i class="bi bi-send"></i> 发送邮件
-        </button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -226,11 +239,14 @@ let selectedContacts = [];
 let currentTemplate = null;
 let currentPreviewIndex = 0;
 let emailPreviews = [];
+let currentHistoryPage = 1;
+let selectedHistoryIds = new Set();  // 保存跨页选中的历史记录ID
 
 // 使用原生JavaScript
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ 海外客户搜索页面已加载');
   initializePage();
+  updateHistoryCount();
   
   // 备用方案：通过JavaScript绑定点击事件
   const searchBtn = document.querySelector('.search-btn');
@@ -281,19 +297,30 @@ async function searchOverseasCustomers() {
     console.log('📥 服务器响应:', data);
     
     if (!data.success) {
-      showError('搜索失败: ' + (data.message || '未知错误'));
+      const errorMsg = data.error || data.message || '未知错误';
+      console.error('❌ 搜索失败:', errorMsg);
+      showError('搜索失败: ' + errorMsg);
+      hideLoading();
+      return;
+    }
+    
+    if (!data.companies || data.companies.length === 0) {
+      console.warn('⚠️  OpenAI返回的公司列表为空');
+      showWarning('未找到符合条件的公司，请稍后重试');
       hideLoading();
       return;
     }
     
     // 将companies转换为customers格式
     overseasCustomers = (data.companies || []).map(company => ({
-      company_name: company.company_name,
+      company_name: company.name || company.company_name,  // 支持两种字段名
       company_description: company.description,
       email: company.email || '',
-      domain: company.website ? company.website.replace(/^https?:\/\/(www\.)?/, '') : '',
+      domain: company.domain || (company.website ? company.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : ''),
+      website: company.website || '',
       country: company.country,
-      city: company.city
+      city: company.city || '',
+      location: company.location || ''
     }));
     
     if (overseasCustomers.length === 0) {
@@ -312,6 +339,9 @@ async function searchOverseasCustomers() {
     
     renderOverseasCustomers();
     showSuccess(`找到 ${overseasCustomers.length} 个海外客户`);
+    
+    // 更新历史记录数量
+    updateHistoryCount();
     
   } catch (error) {
     console.error('❌ 搜索海外客户失败:', error);
@@ -335,15 +365,19 @@ function renderOverseasCustomers() {
     html += `
       <tr>
         <td>${index + 1}</td>
-        <td>${customer.company_name || '未知公司'}</td>
+        <td>${customer.company_name}</td>
         <td>${customer.company_description || '-'}</td>
-        <td>${customer.email || '-'}</td>
         <td>${customer.domain || '-'}</td>
         <td>${customer.country || '-'}</td>
-        <td>${customer.city || '-'}</td>
-        <td>
-          <button class="btn btn-primary btn-sm" onclick="searchCompanyContacts('${customer.company_name}', '${customer.domain}')">
-            <i class="bi bi-person-lines-fill"></i> 联系人
+        <td>${customer.city || customer.location || '-'}</td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-primary btn-sm" 
+                  onclick="searchCompanyContacts('${customer.company_name.replace(/'/g, "\\'")}', '${customer.domain}')" 
+                  title="搜索联系人"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  style="min-width: 40px;">
+            <i class="bi bi-person-lines-fill"></i>
           </button>
         </td>
       </tr>
@@ -352,11 +386,24 @@ function renderOverseasCustomers() {
   
   tbody.innerHTML = html;
   console.log('✅ 客户列表渲染完成');
+  
+  // 初始化Bootstrap Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(tooltipTriggerEl => {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
 }
 
 // 搜索公司联系人
 async function searchCompanyContacts(companyName, domain) {
-  console.log('✅ 搜索联系人按钮被点击:', companyName, domain);
+  console.log('✅ 搜索联系人按钮被点击');
+  console.log('  - 公司名称:', companyName);
+  console.log('  - 域名:', domain);
+  
+  if (!domain) {
+    showWarning('该公司没有域名信息，无法搜索联系人');
+    return;
+  }
   
   try {
     showLoading();
@@ -416,9 +463,25 @@ async function searchCompanyContacts(companyName, domain) {
     
     renderContactList(contacts);
     
+    // 确保联系人模态框在历史记录模态框之上
+    const contactModal = document.getElementById('contactListModal');
+    const historyModal = document.getElementById('searchHistoryModal');
+    
+    // 设置联系人模态框的z-index高于历史记录
+    contactModal.style.zIndex = '2060';
+    
     // 显示模态框
-    const modal = new bootstrap.Modal(document.getElementById('contactListModal'));
+    const modal = new bootstrap.Modal(contactModal);
     modal.show();
+    
+    // 模态框显示后再次确保z-index
+    setTimeout(() => {
+      const contactBackdrop = document.querySelectorAll('.modal-backdrop');
+      if (contactBackdrop.length > 0) {
+        contactBackdrop[contactBackdrop.length - 1].style.zIndex = '2050';
+      }
+      contactModal.style.zIndex = '2060';
+    }, 100);
     
   } catch (error) {
     console.error('❌ 搜索联系人失败:', error);
@@ -452,11 +515,11 @@ function renderContactList(contacts) {
         <td>${contact.company || '-'}</td>
         <td>${contact.email}</td>
         <td>${contact.description || '-'}</td>
-        <td>
+        <td style="white-space: nowrap;">
           ${isExisting ? 
-            '<span class="badge bg-success"><i class="bi bi-check"></i> 已是联系人</span>' :
-            `<button class="btn btn-primary btn-sm" onclick="addContact(${index}); return false;">
-              <i class="bi bi-plus"></i> 添加
+            '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 已添加</span>' :
+            `<button class="btn btn-primary btn-sm" onclick="addContact(${index}); return false;" style="min-width: 70px;">
+              <i class="bi bi-plus-lg"></i>
             </button>`
           }
         </td>
@@ -589,198 +652,117 @@ function updateSelectedContactsCount() {
   }
 }
 
-// 进入邮件模板选择
-function proceedToEmailTemplate() {
+// 批量添加联系人
+async function batchAddContacts() {
   const selectedContacts = getSelectedContacts();
   
   if (selectedContacts.length === 0) {
-    showToast('请选择至少一个联系人', 'warning');
+    showWarning('请选择至少一个联系人');
     return;
   }
   
-  // 关闭联系人列表模态框
-  $('#contactListModal').modal('hide');
+  console.log(`📦 准备批量添加 ${selectedContacts.length} 个联系人`);
   
-  // 显示邮件模板选择模态框
-  loadEmailTemplates();
-  $('#emailTemplateModal').modal('show');
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 调用批量创建接口
+    const response = await fetch('/api/contacts/batch', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ contacts: selectedContacts })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const { success_count, duplicate_count, failed_count, success, duplicate } = data.results;
+      
+      let message = `成功添加 ${success_count} 个联系人`;
+      if (duplicate_count > 0) {
+        message += `，${duplicate_count} 个已存在`;
+      }
+      if (failed_count > 0) {
+        message += `，${failed_count} 个失败`;
+      }
+      
+      showSuccess(message);
+      
+      // 更新表格中的按钮状态，标记哪些已添加
+      const successEmails = success.map(c => c.email);
+      const duplicateEmails = duplicate.map(c => c.email);
+      
+      document.querySelectorAll('.contact-checkbox:checked').forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const index = parseInt(checkbox.value);
+        const contact = window.hunterContacts[index];
+        
+        if (successEmails.includes(contact.email)) {
+          // 成功添加：禁用复选框，显示成功标记
+          checkbox.disabled = true;
+          checkbox.checked = false;
+          const statusCell = row.querySelector('td:last-child');
+          statusCell.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> 已添加</span>';
+        } else if (duplicateEmails.includes(contact.email)) {
+          // 已存在：禁用复选框，显示已存在标记
+          checkbox.disabled = true;
+          checkbox.checked = false;
+          const statusCell = row.querySelector('td:last-child');
+          statusCell.innerHTML = '<span class="badge bg-warning"><i class="bi bi-info-circle"></i> 已存在</span>';
+        }
+      });
+      
+      // 更新选中数量
+      updateSelectedContactsCount();
+      
+      console.log('✅ 批量添加完成:', data.results);
+    } else {
+      showError('批量添加失败: ' + data.message);
+    }
+    
+  } catch (error) {
+    console.error('❌ 批量添加联系人失败:', error);
+    showError('批量添加失败: ' + error.message);
+  } finally {
+    hideLoading();
+  }
 }
 
 // 获取选中的联系人
 function getSelectedContacts() {
   const selected = [];
-  $('.contact-checkbox:checked').each(function() {
-    const index = $(this).val();
+  document.querySelectorAll('.contact-checkbox:checked').forEach(checkbox => {
+    const index = parseInt(checkbox.value);
+    if (window.hunterContacts && window.hunterContacts[index]) {
     selected.push(window.hunterContacts[index]);
+    }
   });
   return selected;
 }
 
-// 加载邮件模板
-async function loadEmailTemplates() {
-  try {
-    const response = await axios.get('/api/email-templates/');
-    const templates = response.data.templates || [];
-    
-    let html = '';
-    templates.forEach(template => {
-      html += `
-        <div class="list-group-item list-group-item-action template-item" data-template-id="${template.id}">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">${template.title}</h6>
-              <small class="text-muted">${template.description || '无描述'}</small>
-            </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="previewTemplate(${template.id})">
-              <i class="bi bi-eye"></i> 预览
-            </button>
-          </div>
-        </div>
-      `;
-    });
-    
-    $('#templateList').html(html);
-    
-  } catch (error) {
-    console.error('加载邮件模板失败:', error);
-    showToast('加载邮件模板失败', 'danger');
-  }
-}
-
-// 预览邮件模板
-async function previewTemplate(templateId) {
-  try {
-    const selectedContacts = getSelectedContacts();
-    const contactIds = selectedContacts.map(contact => contact.id);
-    
-    const response = await axios.post('/api/email-templates/batch-preview', {
-      template_id: templateId,
-      contact_ids: contactIds
-    });
-    
-    emailPreviews = response.data.previews || [];
-    currentPreviewIndex = 0;
-    
-    renderEmailPreview();
-    
-  } catch (error) {
-    console.error('预览邮件模板失败:', error);
-    showToast('预览邮件模板失败', 'danger');
-  }
-}
-
-// 渲染邮件预览
-function renderEmailPreview() {
-  if (emailPreviews.length === 0) {
-    $('#emailPreviewContent').html('<div class="text-center p-4">暂无预览内容</div>');
-    return;
-  }
+// 过滤联系人列表
+function filterContactList() {
+  const searchInput = document.getElementById('contactSearchInput');
+  const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
   
-  const preview = emailPreviews[currentPreviewIndex];
-  const html = `
-    <div class="email-preview">
-      <div class="preview-header mb-3">
-        <h6>收件人: ${preview.contact_name} (${preview.contact_email})</h6>
-        <small class="text-muted">模板: ${preview.template_title}</small>
-      </div>
-      <div class="preview-content">
-        <pre style="white-space: pre-wrap; font-family: inherit;">${preview.rendered_content}</pre>
-      </div>
-      <div class="preview-footer mt-3">
-        <small class="text-muted">使用变量: ${preview.variables_used.join(', ')}</small>
-      </div>
-    </div>
-  `;
+  const tbody = document.getElementById('contactListTableBody');
+  if (!tbody) return;
   
-  $('#emailPreviewContent').html(html);
-}
-
-// 上一个预览
-function previousPreview() {
-  if (currentPreviewIndex > 0) {
-    currentPreviewIndex--;
-    renderEmailPreview();
-  }
-}
-
-// 下一个预览
-function nextPreview() {
-  if (currentPreviewIndex < emailPreviews.length - 1) {
-    currentPreviewIndex++;
-    renderEmailPreview();
-  }
-}
-
-// 进入邮件发送设置
-function proceedToEmailSettings() {
-  if (emailPreviews.length === 0) {
-    showToast('请先预览邮件模板', 'warning');
-    return;
-  }
+  const rows = tbody.querySelectorAll('tr');
   
-  // 关闭邮件模板模态框
-  $('#emailTemplateModal').modal('hide');
-  
-  // 加载发件邮箱选项
-  loadSenderEmails();
-  
-  // 显示邮件发送设置模态框
-  $('#emailSettingsModal').modal('show');
-}
-
-// 加载发件邮箱
-async function loadSenderEmails() {
-  try {
-    const response = await axios.get('/api/user-email-bindings/');
-    const bindings = response.data.bindings || [];
-    
-    let html = '';
-    bindings.forEach(binding => {
-      const isDefault = binding.is_default ? ' (默认)' : '';
-      html += `<option value="${binding.id}">${binding.email_address}${isDefault}</option>`;
-    });
-    
-    $('#senderEmailSelect').html(html);
-    
-  } catch (error) {
-    console.error('加载发件邮箱失败:', error);
-    showToast('加载发件邮箱失败', 'danger');
-  }
-}
-
-// 发送邮件
-async function sendEmails() {
-  try {
-    const senderEmailId = $('#senderEmailSelect').val();
-    const sendTime = $('#sendTimeSelect').val();
-    const scheduleTime = $('#scheduleTime').val();
-    
-    if (!senderEmailId) {
-      showToast('请选择发件邮箱', 'warning');
-      return;
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    if (text.includes(searchTerm)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
     }
-    
-    showLoading();
-    
-    const selectedContacts = getSelectedContacts();
-    const contactIds = selectedContacts.map(contact => contact.id);
-    
-    const response = await axios.post('/api/emails/send-batch', {
-      template_id: currentTemplate,
-      contact_ids: contactIds,
-      sender_email_binding_id: senderEmailId,
-      send_time: sendTime === 'scheduled' ? scheduleTime : null
-    });
-    
-    showToast('邮件发送成功', 'success');
-    $('#emailSettingsModal').modal('hide');
-    
-  } catch (error) {
-    console.error('发送邮件失败:', error);
-    showToast('发送邮件失败', 'danger');
-  } finally {
-    hideLoading();
-  }
+  });
 }
 
 // 导出客户
@@ -791,9 +773,10 @@ function exportCustomers() {
   }
   
   // 创建CSV内容
-  let csvContent = '序号,公司名称,公司简介,邮箱,域名,国家,城市\n';
+  let csvContent = '序号,公司名称,公司简介,域名,国家,城市\n';
   overseasCustomers.forEach((customer, index) => {
-    csvContent += `${index + 1},"${customer.company_name}","${customer.company_description}","${customer.email}","${customer.domain}","${customer.country}","${customer.city}"\n`;
+    const city = customer.city || customer.location || '-';
+    csvContent += `${index + 1},"${customer.company_name}","${customer.company_description}","${customer.domain}","${customer.country}","${city}"\n`;
   });
   
   // 下载CSV文件
@@ -831,8 +814,8 @@ function showLoading() {
     <div class="loading-overlay" id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
       <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
         <span class="visually-hidden">加载中...</span>
-      </div>
-    </div>
+            </div>
+          </div>
   `;
   document.body.insertAdjacentHTML('beforeend', loadingHTML);
 }
@@ -873,8 +856,8 @@ function showToast(message, type = 'info') {
     <div class="d-flex align-items-center">
       <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-x-circle' : type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
       <span>${message}</span>
-    </div>
-  `;
+        </div>
+      `;
   
   toastContainer.appendChild(toast);
   
@@ -884,5 +867,636 @@ function showToast(message, type = 'info') {
     toast.style.transition = 'opacity 0.5s';
     setTimeout(() => toast.remove(), 500);
   }, 3000);
+}
+
+// ==================== 搜索历史记录功能 ====================
+
+// 显示搜索历史模态框
+async function showSearchHistory() {
+  const modalElement = document.getElementById('searchHistoryModal');
+  const modal = new bootstrap.Modal(modalElement);
+  
+  // 监听模态框关闭事件，自动清空选中状态
+  modalElement.addEventListener('hidden.bs.modal', function() {
+    clearHistorySelection();
+  }, { once: true });
+  
+  modal.show();
+  
+  // 加载统计数据和历史记录
+  await loadHistoryStats();
+  await loadSearchHistory(1);
+}
+
+// 加载历史统计
+async function loadHistoryStats() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/overseas/search-history/stats', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.stats) {
+      document.getElementById('statsTotal').textContent = data.stats.total || 0;
+      document.getElementById('historyCount').textContent = data.stats.total || 0;
+    }
+  } catch (error) {
+    console.error('加载历史统计失败:', error);
+  }
+}
+
+// 加载搜索历史列表
+async function loadSearchHistory(page = 1) {
+  try {
+    currentHistoryPage = page;
+    
+    const search = document.getElementById('historySearch').value;
+    
+    const token = localStorage.getItem('authToken');
+    let url = `/api/overseas/search-history?page=${page}&pageSize=20`;
+    
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      renderHistoryTable(data.histories || []);
+      renderHistoryPagination(data.page, data.totalPages);
+    } else {
+      showError('加载历史记录失败');
+    }
+  } catch (error) {
+    console.error('加载历史记录失败:', error);
+    showError('加载历史记录失败: ' + error.message);
+  }
+}
+
+// 渲染历史记录表格
+function renderHistoryTable(histories) {
+  const tbody = document.getElementById('historyTableBody');
+  
+  if (histories.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center p-4">
+          <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+          <p class="text-muted mt-2">暂无搜索历史</p>
+        </td>
+      </tr>
+    `;
+    
+    // 清除表头全选状态
+    const selectAllCheckbox = document.getElementById('selectAllHistory');
+    if (selectAllCheckbox) {
+      selectAllCheckbox.checked = false;
+    }
+    
+    return;
+  }
+  
+  let html = '';
+  histories.forEach((history, index) => {
+    const startIndex = (currentHistoryPage - 1) * 20 + index + 1;
+    const isChecked = selectedHistoryIds.has(history.id);  // 检查是否在跨页选中集合中
+    
+    html += `
+      <tr>
+        <td>
+          <input type="checkbox" class="history-checkbox" value="${history.id}" 
+                 onchange="toggleHistorySelection(${history.id})" 
+                 ${isChecked ? 'checked' : ''}>
+        </td>
+        <td>${startIndex}</td>
+        <td><strong>${history.company_name}</strong></td>
+        <td>
+          <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+               title="${history.company_description || '-'}">
+            ${history.company_description || '-'}
+      </div>
+        </td>
+        <td>
+          ${history.company_website ? `
+            <a href="${history.company_website}" target="_blank" class="text-decoration-none">
+              ${history.company_domain || history.company_website}
+              <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          ` : '-'}
+        </td>
+        <td>${history.company_location || '-'}</td>
+        <td><small>${new Date(history.created_at).toLocaleDateString('zh-CN')}</small></td>
+        <td style="white-space: nowrap;">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" 
+                    onclick="searchCompanyContacts('${history.company_name.replace(/'/g, "\\'")}', '${history.company_domain || ''}')" 
+                    title="搜索联系人"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    style="min-width: 40px;">
+              <i class="bi bi-person-lines-fill"></i>
+            </button>
+            <button class="btn btn-outline-danger" 
+                    onclick="deleteHistory(${history.id})" 
+                    title="删除"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    style="min-width: 40px;">
+              <i class="bi bi-trash"></i>
+            </button>
+      </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+  
+  // 更新表头全选状态
+  updateSelectAllHistoryCheckbox();
+  
+  // 更新选中数量显示
+  updateHistoryCheckCount();
+  
+  // 初始化Bootstrap Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(tooltipTriggerEl => {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+}
+
+// 渲染历史记录分页
+function renderHistoryPagination(current, total) {
+  const pagination = document.getElementById('historyPagination');
+  
+  if (total <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadSearchHistory(${current - 1}); return false;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+  `;
+  
+  // 页码
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+      html += `
+        <li class="page-item ${i === current ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="loadSearchHistory(${i}); return false;">${i}</a>
+        </li>
+      `;
+    } else if (i === current - 3 || i === current + 3) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${current === total ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="loadSearchHistory(${current + 1}); return false;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  `;
+  
+  pagination.innerHTML = html;
+}
+
+// 删除历史记录（单个）
+async function deleteHistory(historyId) {
+  // 使用自定义确认弹窗而不是原生confirm
+  if (!await showConfirmDialog('确定要删除这条历史记录吗？', '删除后无法恢复')) {
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`/api/overseas/search-history/${historyId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess('删除成功');
+      
+      // 从选中集合中移除
+      selectedHistoryIds.delete(historyId);
+      
+      // 检查当前页是否只有这一条记录
+      const currentPageHistories = document.querySelectorAll('.history-checkbox').length;
+      let targetPage = currentHistoryPage;
+      
+      if (currentPageHistories <= 1 && currentHistoryPage > 1) {
+        targetPage = currentHistoryPage - 1;
+      }
+      
+      await loadSearchHistory(targetPage);
+      await loadHistoryStats();
+      updateHistoryCheckCount();
+    } else {
+      showError('删除失败');
+    }
+  } catch (error) {
+    console.error('删除失败:', error);
+    showError('删除失败');
+  }
+}
+
+// 批量删除历史记录
+async function batchDeleteHistory() {
+  const selectedIds = getSelectedHistoryIds();
+  
+  if (selectedIds.length === 0) {
+    showWarning('请先选择要删除的记录');
+    return;
+  }
+  
+  // 使用自定义确认弹窗
+  if (!await showConfirmDialog(
+    `确定要删除选中的 ${selectedIds.length} 条历史记录吗？`,
+    '删除后无法恢复'
+  )) {
+    return;
+  }
+  
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/overseas/search-history/batch-delete', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ids: selectedIds })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess(`成功删除 ${data.deleted_count} 条记录`);
+      
+      // 清空选中集合
+      selectedHistoryIds.clear();
+      
+      // 清除表头的全选复选框
+      const selectAllCheckbox = document.getElementById('selectAllHistory');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+      }
+      
+      // 重新加载当前页，如果当前页为空则跳转到上一页
+      const currentPageHistories = document.querySelectorAll('.history-checkbox').length;
+      const deletedOnCurrentPage = selectedIds.filter(id => {
+        const checkbox = document.querySelector(`.history-checkbox[value="${id}"]`);
+        return checkbox !== null;
+      }).length;
+      
+      // 如果当前页所有记录都被删除了，跳转到上一页或第一页
+      let targetPage = currentHistoryPage;
+      if (deletedOnCurrentPage >= currentPageHistories && currentHistoryPage > 1) {
+        targetPage = currentHistoryPage - 1;
+      }
+      
+      await loadSearchHistory(targetPage);
+      await loadHistoryStats();
+      
+      // 重置选中数量
+      updateHistoryCheckCount();
+    } else {
+      showError('批量删除失败');
+    }
+  } catch (error) {
+    console.error('批量删除失败:', error);
+    showError('批量删除失败');
+  } finally {
+    hideLoading();
+  }
+}
+
+// 切换单个历史记录的选中状态
+function toggleHistorySelection(historyId) {
+  const checkbox = document.querySelector(`.history-checkbox[value="${historyId}"]`);
+  
+  if (checkbox && checkbox.checked) {
+    selectedHistoryIds.add(historyId);
+  } else {
+    selectedHistoryIds.delete(historyId);
+  }
+  
+  updateHistoryCheckCount();
+  updateSelectAllHistoryCheckbox();
+}
+
+// 获取选中的历史记录ID（包括跨页选中的）
+function getSelectedHistoryIds() {
+  return Array.from(selectedHistoryIds);
+}
+
+// 更新选中的历史记录数量
+function updateHistoryCheckCount() {
+  const count = selectedHistoryIds.size;
+  const countElement = document.getElementById('selectedHistoryCount');
+  if (countElement) {
+    countElement.textContent = count;
+  }
+}
+
+// 全选/取消全选历史记录（仅当前页）
+function toggleAllHistory() {
+  const selectAll = document.getElementById('selectAllHistory');
+  const checkboxes = document.querySelectorAll('.history-checkbox');
+  
+  checkboxes.forEach(checkbox => {
+    if (!checkbox.disabled) {
+      const historyId = parseInt(checkbox.value);
+      
+      if (selectAll.checked) {
+        selectedHistoryIds.add(historyId);
+        checkbox.checked = true;
+      } else {
+        selectedHistoryIds.delete(historyId);
+        checkbox.checked = false;
+      }
+    }
+  });
+  
+  updateHistoryCheckCount();
+}
+
+// 更新表头全选复选框状态
+function updateSelectAllHistoryCheckbox() {
+  const selectAll = document.getElementById('selectAllHistory');
+  if (!selectAll) return;
+  
+  const checkboxes = document.querySelectorAll('.history-checkbox');
+  const checkedCheckboxes = document.querySelectorAll('.history-checkbox:checked');
+  
+  if (checkboxes.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  } else if (checkedCheckboxes.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  } else if (checkedCheckboxes.length === checkboxes.length) {
+    selectAll.checked = true;
+    selectAll.indeterminate = false;
+  } else {
+    selectAll.checked = false;
+    selectAll.indeterminate = true;  // 部分选中状态
+  }
+}
+
+// 清空历史记录选中状态
+function clearHistorySelection() {
+  console.log('🧹 清空历史记录选中状态');
+  
+  // 清空全局选中集合
+  selectedHistoryIds.clear();
+  
+  // 清除所有复选框
+  document.querySelectorAll('.history-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  // 清除表头全选
+  const selectAll = document.getElementById('selectAllHistory');
+  if (selectAll) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  }
+  
+  // 更新计数
+  updateHistoryCheckCount();
+}
+
+// 自定义确认对话框
+function showConfirmDialog(message, subtitle = '') {
+  return new Promise((resolve) => {
+    // 创建确认弹窗
+    const modalHTML = `
+      <div class="modal fade" id="confirmDialog" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-question-circle text-warning"></i> 确认操作
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-2">${message}</p>
+              ${subtitle ? `<small class="text-muted">${subtitle}</small>` : ''}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="window.confirmDialogResolve(false)">
+                取消
+              </button>
+              <button type="button" class="btn btn-danger" data-bs-dismiss="modal" onclick="window.confirmDialogResolve(true)">
+                确定删除
+              </button>
+            </div>
+          </div>
+      </div>
+    </div>
+  `;
+    
+    // 移除旧的确认弹窗
+    const oldModal = document.getElementById('confirmDialog');
+    if (oldModal) oldModal.remove();
+    
+    // 添加新弹窗
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 设置全局resolve函数
+    window.confirmDialogResolve = resolve;
+    
+    // 显示弹窗
+    const modal = new bootstrap.Modal(document.getElementById('confirmDialog'));
+    modal.show();
+    
+    // 弹窗关闭时如果没有点击按钮，默认返回false
+    document.getElementById('confirmDialog').addEventListener('hidden.bs.modal', () => {
+      if (window.confirmDialogResolve) {
+        const resolver = window.confirmDialogResolve;
+        window.confirmDialogResolve = null;
+        resolver(false);
+      }
+    }, { once: true });
+  });
+}
+
+// 页面加载时获取历史记录统计
+async function updateHistoryCount() {
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch('/api/overseas/search-history/stats', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.stats) {
+      document.getElementById('historyCount').textContent = data.stats.total || 0;
+    }
+  } catch (error) {
+    console.error('获取历史统计失败:', error);
+  }
+}
+
+// 防抖搜索历史
+let historySearchTimeout;
+function debounceHistorySearch() {
+  clearTimeout(historySearchTimeout);
+  historySearchTimeout = setTimeout(() => {
+    loadSearchHistory(1);
+  }, 500);
+}
+
+// 导出选中的历史记录
+async function exportSelectedHistory() {
+  const selectedIds = getSelectedHistoryIds();
+  
+  if (selectedIds.length === 0) {
+    showWarning('请先选择要导出的记录');
+      return;
+    }
+    
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 获取选中的历史记录详细数据
+    const promises = selectedIds.map(id => 
+      fetch(`/api/overseas/search-history?page=1&pageSize=1000`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json())
+    );
+    
+    // 简化：直接从当前页面的数据中筛选
+    const allCheckboxes = document.querySelectorAll('.history-checkbox:checked');
+    const selectedHistories = [];
+    
+    allCheckboxes.forEach(checkbox => {
+      const row = checkbox.closest('tr');
+      const cells = row.querySelectorAll('td');
+      
+      selectedHistories.push({
+        company_name: cells[2].textContent.trim(),
+        company_description: cells[3].textContent.trim(),
+        company_domain: cells[4].textContent.trim(),
+        company_location: cells[5].textContent.trim(),
+        created_at: cells[6].textContent.trim()
+      });
+    });
+    
+    exportToCSV(selectedHistories, '搜索历史记录_选中.csv');
+    showSuccess(`成功导出 ${selectedHistories.length} 条记录`);
+    
+  } catch (error) {
+    console.error('导出失败:', error);
+    showError('导出失败');
+  } finally {
+    hideLoading();
+  }
+}
+
+// 导出全部历史记录
+async function exportAllHistory() {
+  try {
+    showLoading();
+    
+    const token = localStorage.getItem('authToken');
+    
+    // 获取所有历史记录（不分页）
+    const response = await fetch('/api/overseas/search-history?page=1&pageSize=10000', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.histories || data.histories.length === 0) {
+      showWarning('没有可导出的历史记录');
+      hideLoading();
+    return;
+  }
+  
+    exportToCSV(data.histories, '搜索历史记录_全部.csv');
+    showSuccess(`成功导出 ${data.histories.length} 条记录`);
+    
+  } catch (error) {
+    console.error('导出失败:', error);
+    showError('导出失败');
+  } finally {
+    hideLoading();
+  }
+}
+
+// 通用CSV导出函数
+function exportToCSV(histories, filename) {
+  // 创建CSV内容
+  let csvContent = '\uFEFF';  // UTF-8 BOM，确保Excel正确显示中文
+  csvContent += '序号,公司名称,公司简介,网站,域名,位置,国家,搜索时间\n';
+  
+  histories.forEach((history, index) => {
+    const name = history.company_name || '';
+    const desc = (history.company_description || '-').replace(/"/g, '""').replace(/\n/g, ' ');
+    const website = history.company_website || '-';
+    const domain = history.company_domain || '-';
+    const location = history.company_location || '-';
+    const country = history.country || '-';
+    const time = history.created_at ? new Date(history.created_at).toLocaleString('zh-CN') : '-';
+    
+    csvContent += `${index + 1},"${name}","${desc}","${website}","${domain}","${location}","${country}","${time}"\n`;
+  });
+  
+  // 下载CSV文件
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 </script>

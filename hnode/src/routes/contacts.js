@@ -101,6 +101,73 @@ router.post('/', authenticateToken, checkPagePermission('contacts.create'), asyn
   }
 });
 
+// 批量创建联系人
+router.post('/batch', authenticateToken, checkPagePermission('contacts.create'), async (req, res) => {
+  try {
+    const { contacts } = req.body;
+    
+    if (!Array.isArray(contacts) || contacts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供联系人列表'
+      });
+    }
+    
+    console.log(`📦 批量创建联系人，数量: ${contacts.length}`);
+    
+    const results = {
+      success: [],
+      failed: [],
+      duplicate: []
+    };
+    
+    for (const contactData of contacts) {
+      try {
+        const contact = await contactService.createContact(contactData, req.user.id);
+        results.success.push({
+          email: contact.email,
+          name: contact.name
+        });
+      } catch (error) {
+        // 检查是否是重复邮箱错误
+        if (error.message.includes('邮箱') || error.message.includes('已存在')) {
+          results.duplicate.push({
+            email: contactData.email,
+            name: contactData.name,
+            error: '邮箱已存在'
+          });
+        } else {
+          results.failed.push({
+            email: contactData.email,
+            name: contactData.name,
+            error: error.message
+          });
+        }
+      }
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: `成功添加 ${results.success.length} 个联系人`,
+      results: {
+        success_count: results.success.length,
+        failed_count: results.failed.length,
+        duplicate_count: results.duplicate.length,
+        success: results.success,
+        failed: results.failed,
+        duplicate: results.duplicate
+      }
+    });
+  } catch (error) {
+    console.error('批量创建联系人错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '批量创建联系人失败',
+      error: error.message
+    });
+  }
+});
+
 // 获取单个联系人
 router.get('/:contactId', authenticateToken, checkPagePermission('contacts.view'), async (req, res) => {
   try {

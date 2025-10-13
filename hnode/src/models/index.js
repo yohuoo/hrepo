@@ -18,6 +18,7 @@ const Report = require('./Report');
 const Page = require('./Page');
 const PagePermission = require('./PagePermission');
 const PermissionAuditLog = require('./PermissionAuditLog');
+const OverseasSearchHistory = require('./OverseasSearchHistory');
 
 // 定义模型关联
 const setupAssociations = () => {
@@ -40,6 +41,7 @@ const setupAssociations = () => {
   User.hasMany(SalesRecord, { foreignKey: 'user_id', as: 'salesRecords' });
   User.hasMany(Report, { foreignKey: 'user_id', as: 'reports' });
   User.hasMany(Report, { foreignKey: 'generated_by', as: 'generatedReports' });
+  User.hasMany(OverseasSearchHistory, { foreignKey: 'user_id', as: 'overseasSearchHistory' });
 
   // Contact关联
   Contact.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -121,6 +123,9 @@ const setupAssociations = () => {
   PermissionAuditLog.belongsTo(User, { foreignKey: 'operator_id', as: 'operator' });
   
   User.hasMany(PermissionAuditLog, { foreignKey: 'operator_id', as: 'auditLogs' });
+  
+  // OverseasSearchHistory关联
+  OverseasSearchHistory.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 };
 
 // 初始化数据库
@@ -158,6 +163,7 @@ module.exports = {
   Page,
   PagePermission,
   PermissionAuditLog,
+  OverseasSearchHistory,
   setupAssociations,
   initializeDatabase
 };
