@@ -1745,6 +1745,10 @@ async function aiEnrichTemplate() {
     aiGeneratedTemplateTitle = data.result.title;
     aiGeneratedTemplateContent = data.result.content;
     
+    // 将换行符转换为 <br> 标签，保留格式
+    const formattedTitle = (aiGeneratedTemplateTitle || '').replace(/\n/g, '<br>');
+    const formattedContent = (aiGeneratedTemplateContent || '').replace(/\n/g, '<br>');
+    
     // 显示结果
     document.getElementById('aiTemplateModalBody').innerHTML = `
       <div class="alert alert-info mb-3">
@@ -1755,13 +1759,13 @@ async function aiEnrichTemplate() {
         <div class="ai-preview-label">
           <i class="bi bi-envelope"></i> 生成的标题
         </div>
-        <div class="ai-preview-content">${aiGeneratedTemplateTitle}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedTitle}</div>
       </div>
       <div class="mb-3">
         <div class="ai-preview-label">
           <i class="bi bi-file-text"></i> 生成的内容
         </div>
-        <div class="ai-preview-content">${aiGeneratedTemplateContent}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedContent}</div>
       </div>
     `;
     document.getElementById('aiTemplateModalFooter').style.display = 'flex';
@@ -1831,6 +1835,10 @@ async function translateTemplate(targetLanguage = null) {
     aiGeneratedTemplateTitle = data.result.title;
     aiGeneratedTemplateContent = data.result.content;
     
+    // 将换行符转换为 <br> 标签，保留格式
+    const formattedTitle = (aiGeneratedTemplateTitle || '').replace(/\n/g, '<br>');
+    const formattedContent = (aiGeneratedTemplateContent || '').replace(/\n/g, '<br>');
+    
     // 显示结果
     const langInfo = data.result.detected_language && data.result.target_language 
       ? ` (${data.result.detected_language} → ${data.result.target_language})`
@@ -1842,13 +1850,13 @@ async function translateTemplate(targetLanguage = null) {
         <div class="ai-preview-label">
           <i class="bi bi-envelope"></i> 翻译后的标题
         </div>
-        <div class="ai-preview-content">${aiGeneratedTemplateTitle}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedTitle}</div>
       </div>
       <div class="mb-3">
         <div class="ai-preview-label">
           <i class="bi bi-file-text"></i> 翻译后的内容
         </div>
-        <div class="ai-preview-content">${aiGeneratedTemplateContent}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedContent}</div>
       </div>
     `;
     document.getElementById('aiTemplateModalFooter').style.display = 'flex';

@@ -289,6 +289,31 @@
   </div>
 </div>
 
+<!-- 保存为模板确认模态框（替代浏览器原生confirm） -->
+<div class="modal fade" id="saveAsTemplateModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-journal-plus"></i> 保存为模板
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        是否将本次邮件内容保存为模板？
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-primary" id="confirmSaveTemplateBtn">
+          <i class="bi bi-check-lg"></i> 保存
+        </button>
+      </div>
+    </div>
+  </div>
+  </div>
+
 <style>
 /* AI结果预览样式 */
 .ai-result-preview {
@@ -477,7 +502,9 @@ async function autoSelectRecipientByEmail(email) {
       
       if (contact) {
         console.log('✅ 找到匹配的联系人:', contact.name);
-        selectedRecipients = [contact];
+        // 添加 type 字段，确保在模态框中能正确识别
+        const contactWithType = { ...contact, type: 'contacts' };
+        selectedRecipients = [contactWithType];
         updateRecipientDisplay();
       } else {
         console.log('⚠️ 未找到匹配的联系人，邮箱:', email);
@@ -1397,13 +1424,42 @@ async function confirmSendEmail() {
     }
     
     showSuccess(`邮件发送成功！已发送 ${data.total_sent} 封邮件`);
+
+    // 发送已完成，先关闭全局加载遮罩，避免一直转圈
+    hideLoading();
     
-    // 如果没有使用模板，询问是否保存为模板
+    // 如果没有使用模板，询问是否保存为模板（使用自定义模态框代替confirm）
     if (!currentTemplate) {
-      const saveAsTemplate = confirm('是否将此邮件内容保存为模板？');
-      if (saveAsTemplate) {
-        await saveAsNewTemplate(subject, content);
-      }
+      await new Promise((resolve) => {
+        const modalEl = document.getElementById('saveAsTemplateModal');
+        const modal = new bootstrap.Modal(modalEl);
+        const confirmBtn = document.getElementById('confirmSaveTemplateBtn');
+
+        const cleanup = () => {
+          confirmBtn.removeEventListener('click', onConfirm);
+          modalEl.removeEventListener('hidden.bs.modal', onHidden);
+        };
+
+        const onConfirm = async () => {
+          cleanup();
+          modal.hide();
+          // 单独为“保存为模板”过程显示加载
+          showLoading();
+          await saveAsNewTemplate(subject, content);
+          hideLoading();
+          showSuccess('已保存为模板');
+          resolve();
+        };
+
+        const onHidden = () => {
+          cleanup();
+          resolve();
+        };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        modalEl.addEventListener('hidden.bs.modal', onHidden);
+        modal.show();
+      });
     }
     
     // 清空表单

@@ -581,19 +581,23 @@ async function translateCurrentEmail() {
       ? ` (${data.result.detected_language} → ${data.result.target_language})`
       : '';
     
+    // 将内容中的换行符转换为 <br> 标签，保留格式
+    const formattedTitle = (data.result.title || '').replace(/\n/g, '<br>');
+    const formattedContent = (data.result.content || '').replace(/\n/g, '<br>');
+    
     document.getElementById('translateModalTitle').innerHTML = `<i class="bi bi-translate"></i> 翻译结果${langInfo}`;
     document.getElementById('translateModalBody').innerHTML = `
       <div class="mb-4">
         <div class="ai-preview-label">
           <i class="bi bi-envelope"></i> 翻译后的标题
         </div>
-        <div class="ai-preview-content">${data.result.title}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedTitle}</div>
       </div>
       <div class="mb-3">
         <div class="ai-preview-label">
           <i class="bi bi-file-text"></i> 翻译后的内容
         </div>
-        <div class="ai-preview-content">${data.result.content}</div>
+        <div class="ai-preview-content" style="white-space: normal;">${formattedContent}</div>
       </div>
       <div class="alert alert-info">
         <i class="bi bi-info-circle"></i> 
