@@ -417,21 +417,69 @@ class ReportService {
       
       console.log('📅 月报时间范围:', `${year}年${month}月`, '→', startDate, '至', endDate);
     } else if (periodType === 'week' && week && month) {
-      // 周报：基于月份计算该月第几周（使用UTC时间）
-      // 从该月1号开始，计算第N周的日期范围
+      // 周报：按自然周（周一到周日）划分，只统计当月内的日期
       const monthStart = new Date(Date.UTC(year, month - 1, 1));
-      const daysToAdd = (week - 1) * 7;
-      const startDateTime = new Date(monthStart.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
-      const endDateTime = new Date(startDateTime.getTime() + 6 * 24 * 60 * 60 * 1000);
-      
-      // 确保不超过当月范围
       const monthEnd = new Date(Date.UTC(year, month, 0));  // 当月最后一天
-      const actualEndDateTime = endDateTime > monthEnd ? monthEnd : endDateTime;
       
-      startDate = startDateTime.toISOString().split('T')[0];
-      endDate = actualEndDateTime.toISOString().split('T')[0];
+      // 获取1号是星期几 (0=周日, 1=周一, ..., 6=周六)
+      const firstDayOfWeek = monthStart.getUTCDay();
+      
+      // 计算当月各周的起止日期
+      let weekRanges = [];
+      let currentDate = new Date(monthStart);
+      
+      // 第1周：从1号开始到本周周日
+      if (firstDayOfWeek === 0) {
+        // 如果1号是周日，第1周就是1号
+        weekRanges.push({
+          start: new Date(currentDate),
+          end: new Date(currentDate)
+        });
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      } else {
+        // 1号到本周周日
+        const daysUntilSunday = 7 - firstDayOfWeek;
+        const firstWeekEnd = new Date(currentDate.getTime() + daysUntilSunday * 24 * 60 * 60 * 1000);
+        weekRanges.push({
+          start: new Date(currentDate),
+          end: firstWeekEnd
+        });
+        currentDate = new Date(firstWeekEnd.getTime() + 24 * 60 * 60 * 1000); // 下周一
+      }
+      
+      // 后续完整周（周一到周日）
+      while (currentDate <= monthEnd) {
+        const weekStart = new Date(currentDate);
+        const weekEnd = new Date(currentDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+        
+        if (weekEnd > monthEnd) {
+          // 最后一周，截止到月底
+          weekRanges.push({
+            start: weekStart,
+            end: monthEnd
+          });
+          break;
+        } else {
+          weekRanges.push({
+            start: weekStart,
+            end: weekEnd
+          });
+          currentDate = new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000); // 下周一
+        }
+      }
+      
+      // 检查week参数是否有效
+      if (week < 1 || week > weekRanges.length) {
+        throw new Error(`${month}月只有${weekRanges.length}周，请选择1-${weekRanges.length}`);
+      }
+      
+      // 获取第N周的日期范围
+      const targetWeek = weekRanges[week - 1];
+      startDate = targetWeek.start.toISOString().split('T')[0];
+      endDate = targetWeek.end.toISOString().split('T')[0];
       
       console.log('📅 周报时间范围:', `${year}年${month}月第${week}周`, '→', startDate, '至', endDate);
+      console.log(`   (共${weekRanges.length}周)`);
     } else {
       throw new Error('无效的时间参数');
     }
