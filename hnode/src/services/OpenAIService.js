@@ -26,6 +26,12 @@ class OpenAIService {
       
       console.log(`🔄 调用OpenAI API（尝试 ${retryCount + 1}/${MAX_RETRIES + 1}）...`);
       
+      // 兼容不同提供方的 tokens 参数（Claude 通常为 max_tokens）
+      const useClaude = typeof config.openai.model === 'string' && config.openai.model.toLowerCase().includes('claude');
+      const tokensOption = useClaude
+        ? { max_tokens: 4000 }
+        : { max_completion_tokens: 16000 };
+
       const response = await this.client.chat.completions.create({
         model: config.openai.model,
         messages: [
@@ -83,7 +89,7 @@ class OpenAIService {
           }
         ],
         tool_choice: { type: 'function', function: { name: 'search_companies' } },
-        max_completion_tokens: 16000  // 增加到16000，为GPT-5的推理token预留空间
+        ...tokensOption
         // 注意：GPT-5模型不支持自定义temperature参数
       });
 

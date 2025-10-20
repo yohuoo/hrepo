@@ -174,7 +174,7 @@ ${i + 1}. 产品：${s.product}，数量：${s.quantity}，金额：${s.currency
 
     try {
       const response = await this.emailAIService.openai.chat.completions.create({
-        model: 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',

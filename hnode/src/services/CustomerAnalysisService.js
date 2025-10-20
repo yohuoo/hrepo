@@ -219,7 +219,7 @@ class CustomerAnalysisService {
 
       // 构建请求payload
       const payload = {
-        model: process.env.OPENAI_MODEL || 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -229,10 +229,12 @@ class CustomerAnalysisService {
       };
 
       // GPT-5系列模型使用max_completion_tokens，其他模型使用max_tokens
-      const model = process.env.OPENAI_MODEL || 'gpt-4';
-      if (model.startsWith('gpt-5')) {
+      const model = process.env.OPENAI_MODEL || 'claude-sonnet-4-5';
+      if (model.toLowerCase().includes('claude')) {
+        payload.max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 4000;
+        payload.temperature = 0.7;
+      } else if (model.startsWith('gpt-5')) {
         payload.max_completion_tokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 4000;
-        // GPT-5不支持自定义temperature
       } else {
         payload.max_tokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 4000;
         payload.temperature = 0.7;

@@ -169,6 +169,36 @@
   </div>
 </div>
 
+<!-- 重新分析确认模态框 -->
+<div class="modal fade" id="reanalyzeConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-info">
+        <h5 class="modal-title">
+          <i class="bi bi-robot"></i> 确认重新分析
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          <strong>重新AI分析</strong>
+        </div>
+        <p class="mb-3">确定要重新进行AI分析吗？</p>
+        <p class="text-muted small mb-0">这将使用最新的邮件和会议数据重新生成客户分析报告。</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-info" id="confirmReanalyzeBtn">
+          <i class="bi bi-robot"></i> 确认分析
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 编辑客户模态框 -->
 <div class="modal fade" id="editCustomerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -1567,10 +1597,24 @@ async function reanalyzeCustomer() {
   
   const customerId = window.currentCustomer.id;
   
-  if (!confirm('确定要重新进行AI分析吗？\n\n这将使用最新的邮件和会议数据重新生成客户分析报告。')) {
-    return;
-  }
+  // 使用自定义确认模态框替代原生confirm
+  showReanalyzeConfirmDialog(customerId);
+}
+
+// 显示重新分析确认对话框
+function showReanalyzeConfirmDialog(customerId) {
+  const modal = new bootstrap.Modal(document.getElementById('reanalyzeConfirmModal'));
+  modal.show();
   
+  // 设置确认按钮的点击事件
+  document.getElementById('confirmReanalyzeBtn').onclick = function() {
+    modal.hide();
+    performReanalyze(customerId);
+  };
+}
+
+// 执行重新分析
+async function performReanalyze(customerId) {
   try {
     console.log('🤖 开始重新AI客户分析...');
     

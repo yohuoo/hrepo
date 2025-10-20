@@ -90,7 +90,7 @@ ${originalEmail.content}
 
       // 构建请求体
       const requestBody = {
-        model: process.env.OPENAI_MODEL || 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',
@@ -103,11 +103,13 @@ ${originalEmail.content}
         ]
       };
 
-      // GPT-5模型使用max_completion_tokens，其他模型使用max_tokens
-      const model = process.env.OPENAI_MODEL || 'gpt-4';
-      if (model.includes('gpt-5')) {
-        requestBody.max_completion_tokens = 2000;  // GPT-5需要更多token用于生成内容
-        // GPT-5不支持temperature参数
+      // 不同模型的tokens兼容
+      const model = process.env.OPENAI_MODEL || 'claude-sonnet-4-5';
+      if (model.toLowerCase().includes('claude')) {
+        requestBody.max_tokens = 1200;
+        requestBody.temperature = 0.8;
+      } else if (model.includes('gpt-5')) {
+        requestBody.max_completion_tokens = 2000;
       } else {
         requestBody.max_tokens = 500;
         requestBody.temperature = 0.8;

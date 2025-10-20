@@ -31,7 +31,7 @@
         <div class="d-flex gap-2 justify-content-lg-end">
           <% if (typeof userPermissions !== 'undefined' && userPermissions.includes('contacts.hunter_search')) { %>
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#hunterSearchModal">
-            <i class="bi bi-globe me-1"></i>Hunter.io搜索
+            <i class="bi bi-globe me-1"></i>域名搜索
           </button>
           <% } %>
           <% if (typeof userPermissions !== 'undefined' && userPermissions.includes('contacts.create')) { %>
@@ -123,12 +123,12 @@
   </div>
 </div>
 
-<!-- Hunter.io搜索模态框 -->
+<!-- 域名搜索模态框 -->
 <div class="modal fade" id="hunterSearchModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Hunter.io 域名搜索</h5>
+        <h5 class="modal-title">域名搜索</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -814,7 +814,7 @@ async function searchHunter() {
     window.hunterContacts = contacts;
     
   } catch (error) {
-    console.error('❌ Hunter搜索错误:', error);
+    console.error('❌ 域名搜索错误:', error);
     console.error('响应数据:', error.response?.data);
     
     let errorMessage = '搜索失败';
@@ -828,8 +828,7 @@ async function searchHunter() {
     
     showToast(errorMessage, 'danger');
     $('#hunterResults').html(`<div class="alert alert-danger">
-      <strong>错误:</strong> ${errorMessage}<br>
-      <small>请检查Hunter.io API密钥是否正确配置</small>
+      <strong>错误:</strong> ${errorMessage}
     </div>`);
   } finally {
     hideLoading();

@@ -360,7 +360,7 @@ ${i + 1}. 产品：${s.product}，数量：${s.quantity}，金额：${s.currency
 - 如果信息不足，则使用默认值或留空。`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',

@@ -440,7 +440,7 @@ class StatisticsService {
       });
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',
@@ -562,7 +562,7 @@ ${summary.interest_distribution && summary.interest_distribution.length > 0
       });
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: process.env.OPENAI_MODEL || 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',
