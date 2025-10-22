@@ -17,11 +17,12 @@ const config = {
   // OpenAI配置
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
-    model: 'claude-sonnet-4-5',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    fastModel: process.env.OPENAI_FAST_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
     temperature: parseFloat(process.env.OPENAI_TEMPERATURE) || 0.7,
-    maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 8000,
+    maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 4000,
     baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    timeout: parseInt(process.env.OPENAI_TIMEOUT) || 120000
+    timeout: parseInt(process.env.OPENAI_TIMEOUT) || 20000 // 默认降低为20秒
   },
 
   // Hunter.io配置

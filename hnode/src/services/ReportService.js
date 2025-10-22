@@ -125,8 +125,12 @@ class ReportService {
 
   // 生成部门报告
   async generateDepartmentReport(departmentId, year, month, week, periodType, generatedBy) {
+    console.time('📊 部门报告总耗时');
+    console.time('⏱️ 计算日期范围');
     const { startDate, endDate } = this.calculatePeriodRange(year, month, week, periodType);
+    console.timeEnd('⏱️ 计算日期范围');
     
+    console.time('⏱️ 查询现有报告');
     // 检查是否已存在
     let existingReport = await Report.findOne({
       where: {
@@ -138,35 +142,40 @@ class ReportService {
         department_id: departmentId
       }
     });
+    console.timeEnd('⏱️ 查询现有报告');
     
-    // 获取部门信息和成员
-    const department = await Department.findByPk(departmentId, {
-      include: [{ model: User, as: 'manager', attributes: ['id', 'username', 'email'] }]
-    });
+    console.time('⏱️ 获取部门信息和成员');
+    // 并行查询部门信息和成员
+    const DepartmentService = require('./DepartmentService');
+    const deptService = new DepartmentService();
+    
+    const [department, subDeptIds] = await Promise.all([
+      Department.findByPk(departmentId, {
+        include: [{ model: User, as: 'manager', attributes: ['id', 'username', 'email'] }]
+      }),
+      deptService.getSubDepartmentIds(departmentId)
+    ]);
     
     if (!department) {
       throw new Error('部门不存在');
     }
     
-    // 获取部门及子部门所有成员
-    const DepartmentService = require('./DepartmentService');
-    const deptService = new DepartmentService();
-    const subDeptIds = await deptService.getSubDepartmentIds(departmentId);
     const deptIds = [departmentId, ...subDeptIds];
-    
     console.log('📊 部门报告 - 部门IDs（含子部门）:', deptIds);
     
     const members = await User.findAll({
       where: { department_id: { [Op.in]: deptIds }, is_active: true },
       attributes: ['id', 'username']
     });
+    console.timeEnd('⏱️ 获取部门信息和成员');
     
-    console.log('📊 部门报告 - 成员:', members.map(m => ({ id: m.id, username: m.username })));
+    console.log('📊 部门报告 - 成员数:', members.length);
     
     if (members.length === 0) {
       throw new Error('该部门下没有活跃用户');
     }
     
+    console.time('⏱️ 获取统计数据');
     // 获取统计数据
     const stats = await statisticsService.getDashboardStatistics(
       generatedBy,
@@ -176,8 +185,9 @@ class ReportService {
       null,
       departmentId
     );
+    console.timeEnd('⏱️ 获取统计数据');
     
-    console.log('📊 部门报告统计结果:', stats);
+    console.log('📊 部门报告统计结果 - 联系人:', stats.contacts?.total, '客户:', stats.customers?.total);
     
     // 如果已存在，更新它
     if (existingReport) {
@@ -190,20 +200,26 @@ class ReportService {
         end_date: endDate
       });
       
+      console.timeEnd('📊 部门报告总耗时');
+      
       // 异步生成AI内容
+      console.time('🤖 AI生成部门报告');
       this.generateDepartmentReportWithAI(department, members.length, stats, periodType, year, month, week)
         .then(aiSummary => {
           existingReport.update({ summary: aiSummary });
+          console.timeEnd('🤖 AI生成部门报告');
           console.log('✅ 部门报告AI内容生成完成，ID:', existingReport.id);
         })
         .catch(error => {
           console.error('❌ AI生成失败:', error);
+          console.timeEnd('🤖 AI生成部门报告');
           existingReport.update({ summary: '# 报告生成失败\n\n' + error.message });
         });
       
       return existingReport;
     }
     
+    console.time('⏱️ 创建报告记录');
     // 创建新报告
     const report = await Report.create({
       report_type: 'department',
@@ -219,17 +235,22 @@ class ReportService {
       summary: null,  // 生成中
       statistics: stats
     });
+    console.timeEnd('⏱️ 创建报告记录');
     
     console.log('📝 创建新部门报告，ID:', report.id);
+    console.timeEnd('📊 部门报告总耗时');
     
     // 异步生成AI内容
+    console.time('🤖 AI生成部门报告');
     this.generateDepartmentReportWithAI(department, members.length, stats, periodType, year, month, week)
       .then(aiSummary => {
         report.update({ summary: aiSummary });
+        console.timeEnd('🤖 AI生成部门报告');
         console.log('✅ 部门报告AI内容生成完成，ID:', report.id);
       })
       .catch(error => {
         console.error('❌ AI生成失败:', error);
+        console.timeEnd('🤖 AI生成部门报告');
         report.update({ summary: '# 报告生成失败\n\n' + error.message });
       });
     

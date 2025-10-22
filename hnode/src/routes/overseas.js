@@ -1,23 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const { performance } = require('perf_hooks');
 const { authenticateToken } = require('../middleware/auth');
 const OpenAIService = require('../services/OpenAIService');
 const OverseasSearchHistoryService = require('../services/OverseasSearchHistoryService');
 
 // 获取海外代糖公司列表（带历史记录功能）
 router.get('/companies/sugar-free', authenticateToken, async (req, res) => {
+  const totalStart = performance.now();
+  const logDuration = (label, startTime) => {
+    const elapsed = performance.now() - startTime;
+    console.log(`⏱️ [OverseasSearch] ${label}耗时 ${elapsed.toFixed(0)} ms`);
+    return elapsed;
+  };
+  let totalLogged = false;
+
   try {
     const openaiService = new OpenAIService();
     const historyService = new OverseasSearchHistoryService();
     
     // 获取已搜索过的公司列表用于排除
-    const excludeCompanies = await historyService.getSearchedCompanyNames(req.user.id);
+    const historyStart = performance.now();
+    let excludeCompanies = [];
+    try {
+      excludeCompanies = await historyService.getSearchedCompanyNames(req.user.id);
+    } finally {
+      logDuration('获取历史公司列表', historyStart);
+    }
     console.log(`📋 用户已搜索过 ${excludeCompanies.length} 家公司`);
     
     // 调用OpenAI搜索，传入排除列表
-    const result = await openaiService.searchCompaniesWithFunctionCall(20, excludeCompanies);
+    const openaiStart = performance.now();
+    let result;
+    try {
+      result = await openaiService.searchCompaniesWithFunctionCall(10, excludeCompanies);
+    } finally {
+      logDuration('OpenAI搜索', openaiStart);
+    }
 
     if (!result.success) {
+      logDuration('接口总耗时', totalStart);
+      totalLogged = true;
       return res.status(500).json({
         success: false,
         message: '搜索公司失败',
@@ -26,6 +49,7 @@ router.get('/companies/sugar-free', authenticateToken, async (req, res) => {
     }
 
     // 转换数据格式并确保数据完整性
+    const transformStart = performance.now();
     const companies = result.companies.map(company => {
       // 提取域名
       let domain = '';
@@ -52,20 +76,26 @@ router.get('/companies/sugar-free', authenticateToken, async (req, res) => {
         phone: ''
       };
     }).filter(company => company.name);  // 过滤掉没有公司名称的记录
+    logDuration('结果转换', transformStart);
     
     // 批量保存搜索历史
     try {
+      const saveStart = performance.now();
       await historyService.batchAddSearchHistory(req.user.id, {
         query: 'sugar-free companies',
         industry: '食品/饮料',
         country: '全球',
         companySize: ''
       }, companies);
+      logDuration('保存搜索历史', saveStart);
       console.log('✅ 搜索历史已保存');
     } catch (historyError) {
       console.error('⚠️  保存搜索历史失败:', historyError.message);
       // 不影响主流程，继续返回结果
     }
+
+    logDuration('接口总耗时', totalStart);
+    totalLogged = true;
 
     res.json({
       success: true,
@@ -75,6 +105,9 @@ router.get('/companies/sugar-free', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('海外公司搜索错误:', error);
+    if (!totalLogged) {
+      logDuration('接口总耗时(失败)', totalStart);
+    }
     res.status(500).json({
       success: false,
       message: '服务器内部错误',

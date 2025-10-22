@@ -662,3 +662,37 @@ COMMENT ON COLUMN overseas_search_history.search_query IS '搜索关键词';
 COMMENT ON COLUMN overseas_search_history.company_name IS '公司名称';
 COMMENT ON COLUMN overseas_search_history.is_contacted IS '是否已联系';
 COMMENT ON COLUMN overseas_search_history.is_customer IS '是否已成为客户';
+
+-- ==================================================
+-- 邮件草稿表
+-- ==================================================
+CREATE TABLE IF NOT EXISTS email_drafts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_email_binding_id INTEGER REFERENCES user_email_bindings(id) ON DELETE SET NULL,
+  recipients JSONB,
+  title VARCHAR(500),
+  content TEXT,
+  template_id INTEGER REFERENCES email_templates(id) ON DELETE SET NULL,
+  draft_name VARCHAR(200),
+  is_auto_save BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_email_drafts_user ON email_drafts(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_drafts_created ON email_drafts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_drafts_updated ON email_drafts(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_drafts_auto_save ON email_drafts(is_auto_save);
+
+-- 添加注释
+COMMENT ON TABLE email_drafts IS '邮件草稿箱表';
+COMMENT ON COLUMN email_drafts.user_id IS '用户ID';
+COMMENT ON COLUMN email_drafts.sender_email_binding_id IS '发件邮箱绑定ID';
+COMMENT ON COLUMN email_drafts.recipients IS '收件人列表JSON';
+COMMENT ON COLUMN email_drafts.title IS '邮件标题';
+COMMENT ON COLUMN email_drafts.content IS '邮件内容';
+COMMENT ON COLUMN email_drafts.template_id IS '使用的模板ID';
+COMMENT ON COLUMN email_drafts.draft_name IS '草稿名称';
+COMMENT ON COLUMN email_drafts.is_auto_save IS '是否为自动保存的草稿';

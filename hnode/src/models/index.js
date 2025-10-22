@@ -9,6 +9,7 @@ const Customer = require('./Customer');
 const EmailTemplate = require('./EmailTemplate');
 const UserEmailBinding = require('./UserEmailBinding');
 const EmailHistory = require('./EmailHistory');
+const EmailDraft = require('./EmailDraft');
 const ZoomMeeting = require('./ZoomMeeting');
 const CustomerAnalysis = require('./CustomerAnalysis');
 const SalesRecord = require('./SalesRecord');
@@ -67,6 +68,15 @@ const setupAssociations = () => {
   Customer.hasMany(EmailHistory, { foreignKey: 'customer_id', as: 'emailHistory' });
   Contact.hasMany(EmailHistory, { foreignKey: 'contact_id', as: 'emailHistory' });
   UserEmailBinding.hasMany(EmailHistory, { foreignKey: 'sender_email_binding_id', as: 'sentEmails' });
+  
+  // EmailDraft关联
+  EmailDraft.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+  EmailDraft.belongsTo(UserEmailBinding, { foreignKey: 'sender_email_binding_id', as: 'senderEmailBinding' });
+  EmailDraft.belongsTo(EmailTemplate, { foreignKey: 'template_id', as: 'template' });
+  
+  User.hasMany(EmailDraft, { foreignKey: 'user_id', as: 'emailDrafts' });
+  UserEmailBinding.hasMany(EmailDraft, { foreignKey: 'sender_email_binding_id', as: 'drafts' });
+  EmailTemplate.hasMany(EmailDraft, { foreignKey: 'template_id', as: 'drafts' });
 
   // ZoomMeeting关联
   ZoomMeeting.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -154,6 +164,7 @@ module.exports = {
   EmailTemplate,
   UserEmailBinding,
   EmailHistory,
+  EmailDraft,
   ZoomMeeting,
   CustomerAnalysis,
   SalesRecord,

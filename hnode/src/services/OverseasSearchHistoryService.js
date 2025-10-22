@@ -32,7 +32,24 @@ class OverseasSearchHistoryService {
    */
   async batchAddSearchHistory(userId, searchParams, companiesList) {
     try {
-      const records = companiesList.map(company => ({
+      // 先检查哪些公司已经存在
+      const existingCompanies = await OverseasSearchHistory.findAll({
+        where: { 
+          user_id: userId,
+          company_name: companiesList.map(c => c.name)
+        },
+        attributes: ['company_name']
+      });
+      
+      const existingNames = new Set(existingCompanies.map(c => c.company_name));
+      const newCompanies = companiesList.filter(company => !existingNames.has(company.name));
+      
+      if (newCompanies.length === 0) {
+        console.log('📋 所有公司都已存在于历史记录中，跳过保存');
+        return [];
+      }
+      
+      const records = newCompanies.map(company => ({
         user_id: userId,
         search_query: searchParams.query,
         industry: searchParams.industry,
@@ -56,7 +73,7 @@ class OverseasSearchHistoryService {
         returning: true
       });
       
-      console.log(`✅ 成功添加 ${result.length} 条搜索历史记录`);
+      console.log(`✅ 成功添加 ${result.length} 条新搜索历史记录（跳过 ${companiesList.length - newCompanies.length} 条重复记录）`);
       return result;
     } catch (error) {
       console.error('❌ 批量添加搜索历史失败:', error);
@@ -121,7 +138,7 @@ class OverseasSearchHistoryService {
    * 获取已搜索过的公司名称和域名列表（用于排除）
    * 限制数量，避免提示词过长
    */
-  async getSearchedCompanyNames(userId, limit = 50) {
+  async getSearchedCompanyNames(userId, limit = 40) { // 减少排除公司数量
     try {
       const histories = await OverseasSearchHistory.findAll({
         where: { user_id: userId },

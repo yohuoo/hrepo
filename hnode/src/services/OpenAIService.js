@@ -1,4 +1,5 @@
 const OpenAI = require('openai');
+const { performance } = require('perf_hooks');
 const config = require('../config/config');
 
 class OpenAIService {
@@ -9,89 +10,105 @@ class OpenAIService {
       timeout: config.openai.timeout,
       maxRetries: 2  // OpenAI SDK内置重试
     });
+    this.primaryModel = config.openai.model;
+    this.fastModel = config.openai.fastModel || config.openai.model;
   }
 
-  async searchCompaniesWithFunctionCall(maxResults = 20, excludeCompanies = [], retryCount = 0) {
-    const MAX_RETRIES = 3;
+  async searchCompaniesWithFunctionCall(maxResults = 10, excludeCompanies = [], retryCount = 0) {
+    const MAX_RETRIES = 1; // 减少重试次数
+    const selectedModel = this.fastModel;
     
     try {
-      // 构建排除公司的文本（简化格式，节省token）
+      // 构建排除公司的文本（极简格式，节省token）
       let excludeText = '';
       if (excludeCompanies && excludeCompanies.length > 0) {
-        // 只显示公司名称，不显示域名，节省token
-        const companyNames = excludeCompanies.map(c => c.name).join(', ');
-        excludeText = `\n\n**重要：以下${excludeCompanies.length}家公司已搜索过，请排除：${companyNames}**`;
-        console.log(`🚫 排除最近 ${excludeCompanies.length} 家已搜索公司`);
+        // 只显示前5家公司名称，大幅节省token
+        const companyNames = excludeCompanies.slice(0, 5).map(c => c.name).join(', ');
+        excludeText = `\n排除：${companyNames}`;
+        console.log(`🚫 排除最近 ${Math.min(excludeCompanies.length, 5)} 家已搜索公司`);
       }
       
       console.log(`🔄 调用OpenAI API（尝试 ${retryCount + 1}/${MAX_RETRIES + 1}）...`);
       
       // 兼容不同提供方的 tokens 参数（Claude 通常为 max_tokens）
-      const useClaude = typeof config.openai.model === 'string' && config.openai.model.toLowerCase().includes('claude');
+      const useClaude = typeof selectedModel === 'string' && selectedModel.toLowerCase().includes('claude');
       const tokensOption = useClaude
-        ? { max_tokens: 4000 }
-        : { max_completion_tokens: 16000 };
+        ? { max_tokens: Math.min(config.openai.maxTokens, 2000) }
+        : { max_completion_tokens: Math.min(config.openai.maxTokens, 2000) };
 
-      const response = await this.client.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            "role": "system",
-            "content": "你是一名专业的商业情报分析助手，擅长为指定公司寻找潜在客户。你的任务是根据用户提供的公司主营业务，分析其潜在客户画像，并检索符合该画像的企业信息。输出时请仅返回JSON数据，不要包含解释性文字。**请确保返回的公司都是新的、不重复的公司。**"
-          },
-          {
-            "role": "user",
-            "content": `浩天科技是一家专注于代糖、甜味剂（如甜叶菊、赤藓糖醇、三氯蔗糖等）研发和销售的企业。请帮我搜索全球范围内**可能成为浩天科技客户的公司**，例如食品制造商、饮料公司、健康食品品牌、糖尿病食品厂商、餐饮连锁集团等。请返回20家**新的、不重复的**潜在客户的公司信息，字段包括：company_name、website、description、country、city。${excludeText}`
-          }
-        ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'search_companies',
-              description: '搜索浩天科技的潜在客户',
-              parameters: {
-                type: 'object',
-                properties: {
-                  companies: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        company_name: {
-                          type: 'string',
-                          description: '公司名称'
-                        },
+      const apiStart = performance.now();
+      let response;
+      try {
+        response = await this.client.chat.completions.create({
+          model: selectedModel,
+          messages: [
+            {
+              "role": "system",
+              "content": "你是一名专业的商业情报分析助手，擅长为指定公司寻找潜在客户。你的任务是根据用户提供的公司主营业务，分析其潜在客户画像，并检索符合该画像的企业信息。输出时请仅返回JSON数据，不要包含解释性文字。**请确保返回的公司都是新的、不重复的公司。**"
+            },
+            {
+              "role": "user",
+              "content": `浩天科技是一家专注于代糖、甜味剂（甜叶菊、赤藓糖醇、三氯蔗糖等）研发和销售的企业。请帮我搜索全球范围内**最匹配的潜在客户公司**，例如食品制造商、饮料公司、健康食品品牌、糖尿病食品厂商、餐饮连锁集团等。
+
+要求：
+1. 返回${maxResults}家**新的、不重复的**潜在客户公司
+2. company_name、website、country、city 这些字段保持原始语言（通常是英文）
+3. **description 字段用不超过40个中文字符**简要描述主营业务及与代糖的关联
+${excludeText}`
+            }
+          ],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search_companies',
+                description: '搜索浩天科技的潜在客户',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    companies: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          company_name: {
+                            type: 'string',
+                            description: '公司名称'
+                          },
                         website: {
                           type: 'string',
                           description: '公司网站'
                         },
                         description: {
                           type: 'string',
-                          description: '公司描述'
+                          description: '公司描述（中文，40字以内）'
                         },
                         country: {
                           type: 'string',
                           description: '所在国家'
                         },
-                        city: {
-                          type: 'string',
-                          description: '所在城市'
-                        }
-                      },
-                      required: ['company_name', 'website', 'description', 'country', 'city']
+                          city: {
+                            type: 'string',
+                            description: '所在城市'
+                          }
+                        },
+                        required: ['company_name', 'website', 'description', 'country', 'city']
+                      }
                     }
-                  }
-                },
-                required: ['companies']
+                  },
+                  required: ['companies']
+                }
               }
             }
-          }
-        ],
-        tool_choice: { type: 'function', function: { name: 'search_companies' } },
+          ],
+          tool_choice: { type: 'function', function: { name: 'search_companies' } },
         ...tokensOption
         // 注意：GPT-5模型不支持自定义temperature参数
       });
+      } finally {
+        const duration = performance.now() - apiStart;
+        console.log(`⏱️ [OpenAIService] chat.completions耗时 ${duration.toFixed(0)} ms (model: ${selectedModel})`);
+      }
 
       console.log('🔍 OpenAI响应:', JSON.stringify(response, null, 2));
 
@@ -126,8 +143,8 @@ class OpenAIService {
       );
       
       if (shouldRetry) {
-        console.log(`🔄 等待 ${(retryCount + 1) * 2} 秒后重试...`);
-        await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+        console.log(`🔄 等待 ${(retryCount + 1) * 1} 秒后重试...`);
+        await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000)); // 减少等待时间
         return this.searchCompaniesWithFunctionCall(maxResults, excludeCompanies, retryCount + 1);
       }
       
@@ -156,22 +173,36 @@ class OpenAIService {
    */
   async generateCompletion(messages, options = {}) {
     try {
+      const model = config.openai.model;
       const requestParams = {
-        model: config.openai.model,
+        model: model,
         messages: messages
       };
       
-      // 只添加支持的参数（某些模型不支持temperature等参数）
-      // if (options.temperature !== undefined) {
-      //   requestParams.temperature = options.temperature;
-      // }
-      // if (options.maxTokens !== undefined) {
-      //   requestParams.max_completion_tokens = options.maxTokens;
-      // }
+      // 根据模型类型添加支持的参数
+      if (options.maxTokens !== undefined) {
+        if (model.toLowerCase().includes('claude')) {
+          requestParams.max_tokens = options.maxTokens;
+        } else if (model.includes('gpt-5')) {
+          requestParams.max_completion_tokens = options.maxTokens;
+        } else {
+          requestParams.max_tokens = options.maxTokens;
+        }
+      }
       
-      console.log('🤖 调用OpenAI生成文本...');
+      if (options.temperature !== undefined) {
+        requestParams.temperature = options.temperature;
+      }
       
+      console.log('🤖 调用AI生成文本...', {
+        model: model,
+        maxTokens: options.maxTokens,
+        messageLength: JSON.stringify(messages).length
+      });
+      
+      const startTime = Date.now();
       const response = await this.client.chat.completions.create(requestParams);
+      const duration = Date.now() - startTime;
       
       const content = response.choices[0]?.message?.content;
       
@@ -179,7 +210,11 @@ class OpenAIService {
         throw new Error('AI未返回任何内容');
       }
       
-      console.log('✅ AI生成完成，长度:', content.length);
+      console.log('✅ AI生成完成', {
+        耗时: `${duration}ms`,
+        输出长度: content.length,
+        使用tokens: response.usage?.total_tokens || '未知'
+      });
       
       return content;
     } catch (error) {

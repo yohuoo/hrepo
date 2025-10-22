@@ -2,6 +2,14 @@
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-envelope-plus"></i> 写邮件</h2>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary" onclick="showDraftsModal()">
+        <i class="bi bi-folder2-open"></i> 草稿箱
+      </button>
+      <button type="button" class="btn btn-outline-primary" onclick="saveDraft()">
+        <i class="bi bi-save"></i> 保存草稿
+      </button>
+    </div>
   </div>
 
   <div class="row">
@@ -39,7 +47,7 @@
             <!-- 邮件主题 -->
             <div class="mb-3">
               <label class="form-label">邮件主题</label>
-              <input type="text" class="form-control" id="emailSubject" placeholder="请输入邮件主题">
+              <input type="text" class="form-control" id="emailTitle" placeholder="请输入邮件主题">
               <!-- AI生成的标题预览 -->
               <div id="aiTitlePreview" style="display: none;">
                 <div class="ai-result-preview mt-2">
@@ -312,7 +320,124 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- 保存草稿模态框 -->
+<div class="modal fade" id="saveDraftModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-save"></i> 保存草稿
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">草稿名称（可选）</label>
+          <input type="text" class="form-control" id="draftNameInput" placeholder="例如：给客户A的产品介绍邮件">
+          <small class="text-muted">留空则使用邮件标题作为草稿名称</small>
+        </div>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          草稿将保存到服务器，可在任何设备访问
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-primary" onclick="confirmSaveDraft()">
+          <i class="bi bi-check-lg"></i> 保存
+        </button>
+      </div>
+    </div>
   </div>
+</div>
+
+<!-- 草稿箱模态框 -->
+<div class="modal fade" id="draftsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-folder2-open"></i> 草稿箱
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group" id="draftsList">
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 text-muted">加载中...</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div id="draftsPagination" class="flex-grow-1"></div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 使用草稿确认模态框 -->
+<div class="modal fade" id="useDraftConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle"></i> 确认操作
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning mb-3">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>注意</strong>
+        </div>
+        <p class="mb-0">加载此草稿将覆盖当前编辑的内容，是否继续？</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-primary" id="confirmUseDraftBtn">
+          <i class="bi bi-check-lg"></i> 继续
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 删除草稿确认模态框 -->
+<div class="modal fade" id="deleteDraftConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-trash"></i> 确认删除
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger mb-3">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>警告</strong>
+        </div>
+        <p class="mb-0">确定要删除这个草稿吗？删除后无法恢复。</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 取消
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteDraftBtn">
+          <i class="bi bi-trash"></i> 删除
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <style>
 /* AI结果预览样式 */
@@ -357,6 +482,30 @@
   font-size: 0.95rem;
 }
 
+/* AI预览textarea样式（与上方输入框统一，仅加淡底色） */
+.ai-preview-textarea {
+  width: 100% !important;
+  height: 200px !important;
+  background-color: #f8f9fa !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem !important;
+  padding: 0.375rem 0.75rem !important;
+  font-family: inherit !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  resize: vertical !important;
+  cursor: not-allowed !important;
+  color: #212529 !important;
+  opacity: 0.8 !important;
+}
+
+.ai-preview-textarea:focus {
+  background-color: #f8f9fa !important;
+  border-color: #86b7fe !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  outline: none !important;
+}
+
 /* 原内容样式（深色） */
 .form-control {
   background: white;
@@ -386,6 +535,15 @@
 let selectedRecipients = [];
 let tempSelectedRecipients = []; // 临时选择（模态框中）
 let currentTemplate = null;
+
+// 追踪邮件来源和编辑状态
+let emailSource = {
+  type: 'manual', // 'manual', 'template', 'reply', 'draft'
+  wasEdited: false, // 是否被手动编辑过
+  loadedFromTemplate: false,
+  loadedFromDraft: false,
+  isReply: false
+};
 let emailPreviews = [];
 let currentPreviewIndex = 0;
 let aiGeneratedTitle = '';
@@ -400,6 +558,28 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // 加载发件邮箱列表
   await loadSenderEmails();
+  
+  // 监听内容编辑，标记为已编辑
+  const titleInput = document.getElementById('emailTitle');
+  const contentInput = document.getElementById('emailContent');
+  
+  if (titleInput) {
+    titleInput.addEventListener('input', () => {
+      if (emailSource.type !== 'manual' && !emailSource.wasEdited) {
+        emailSource.wasEdited = true;
+        console.log('📝 内容已被编辑');
+      }
+    });
+  }
+  
+  if (contentInput) {
+    contentInput.addEventListener('input', () => {
+      if (emailSource.type !== 'manual' && !emailSource.wasEdited) {
+        emailSource.wasEdited = true;
+        console.log('📝 内容已被编辑');
+      }
+    });
+  }
   
   // 加载邮件模板列表
   await loadTemplateList();
@@ -430,7 +610,7 @@ async function checkReplyMode() {
       const subject = replyData.originalSubject.startsWith('Re:') 
         ? replyData.originalSubject 
         : `Re: ${replyData.originalSubject}`;
-      document.getElementById('emailSubject').value = subject;
+      document.getElementById('emailTitle').value = subject;
       
       // 填充内容（引用原邮件）
       const originalDate = new Date(replyData.originalTime).toLocaleString('zh-CN');
@@ -468,6 +648,11 @@ ${replyData.originalContent}
         `;
         composeForm.parentElement.insertBefore(banner, composeForm);
       }
+      
+      // 标记为回复邮件
+      emailSource.type = 'reply';
+      emailSource.isReply = true;
+      emailSource.wasEdited = false; // 回复邮件即使编辑也不提示保存为模板
       
       // 清除 sessionStorage
       sessionStorage.removeItem('replyData');
@@ -607,17 +792,28 @@ async function loadTemplateList() {
 function loadTemplate() {
   const templateId = document.getElementById('templateSelect').value;
   if (!templateId) {
-    document.getElementById('emailSubject').value = '';
+    document.getElementById('emailTitle').value = '';
     document.getElementById('emailContent').value = '';
     currentTemplate = null;
+    
+    // 重置为手动编辑
+    emailSource.type = 'manual';
+    emailSource.loadedFromTemplate = false;
+    emailSource.wasEdited = false;
     return;
   }
   
   const template = window.allTemplates.find(t => t.id == templateId);
   if (template) {
-    document.getElementById('emailSubject').value = template.title;
+    document.getElementById('emailTitle').value = template.title;
     document.getElementById('emailContent').value = template.content;
     currentTemplate = template;
+    
+    // 标记为从模板加载
+    emailSource.type = 'template';
+    emailSource.loadedFromTemplate = true;
+    emailSource.wasEdited = false; // 刚加载时未编辑
+    
     console.log('✅ 已加载模板:', template.title);
   }
 }
@@ -1084,7 +1280,7 @@ async function previewEmail() {
     return;
   }
   
-  const subject = document.getElementById('emailSubject').value;
+  const subject = document.getElementById('emailTitle').value;
   const content = document.getElementById('emailContent').value;
   
   if (!subject || !content) {
@@ -1319,7 +1515,7 @@ async function sendEmail() {
     return;
   }
   
-  const subject = document.getElementById('emailSubject').value;
+  const subject = document.getElementById('emailTitle').value;
   const content = document.getElementById('emailContent').value;
   
   if (!subject || !content) {
@@ -1352,7 +1548,7 @@ async function confirmSendEmail() {
   }
   
   const senderEmailId = document.getElementById('senderEmail').value;
-  const subject = document.getElementById('emailSubject').value;
+  const subject = document.getElementById('emailTitle').value;
   const content = document.getElementById('emailContent').value;
   
   try {
@@ -1428,8 +1624,13 @@ async function confirmSendEmail() {
     // 发送已完成，先关闭全局加载遮罩，避免一直转圈
     hideLoading();
     
-    // 如果没有使用模板，询问是否保存为模板（使用自定义模态框代替confirm）
-    if (!currentTemplate) {
+    // 判断是否需要提示保存为模板
+    const shouldPrompt = shouldPromptSaveAsTemplate();
+    
+    console.log('📋 是否提示保存为模板:', shouldPrompt, '来源:', emailSource);
+    
+    // 如果满足条件，询问是否保存为模板
+    if (shouldPrompt) {
       await new Promise((resolve) => {
         const modalEl = document.getElementById('saveAsTemplateModal');
         const modal = new bootstrap.Modal(modalEl);
@@ -1443,7 +1644,7 @@ async function confirmSendEmail() {
         const onConfirm = async () => {
           cleanup();
           modal.hide();
-          // 单独为“保存为模板”过程显示加载
+          // 单独为"保存为模板"过程显示加载
           showLoading();
           await saveAsNewTemplate(subject, content);
           hideLoading();
@@ -1512,14 +1713,48 @@ async function saveAsNewTemplate(title, content) {
   }
 }
 
+// 判断是否应该提示保存为模板
+function shouldPromptSaveAsTemplate() {
+  // 1. 如果是回复邮件，不提示
+  if (emailSource.isReply || emailSource.type === 'reply') {
+    console.log('  → 回复邮件，不提示');
+    return false;
+  }
+  
+  // 2. 如果使用了模板且未编辑，不提示
+  if (emailSource.loadedFromTemplate && !emailSource.wasEdited) {
+    console.log('  → 使用模板未编辑，不提示');
+    return false;
+  }
+  
+  // 3. 如果从草稿加载且未编辑，不提示
+  if (emailSource.loadedFromDraft && !emailSource.wasEdited) {
+    console.log('  → 从草稿加载未编辑，不提示');
+    return false;
+  }
+  
+  // 4. 其他情况（手动编辑、或从模板/草稿编辑过）都提示
+  console.log('  → 满足保存条件，提示保存');
+  return true;
+}
+
 // 清空表单
 function clearForm() {
-  document.getElementById('emailSubject').value = '';
+  document.getElementById('emailTitle').value = '';
   document.getElementById('emailContent').value = '';
   document.getElementById('templateSelect').value = '';
   selectedRecipients = [];
   currentTemplate = null;
   updateRecipientDisplay();
+  
+  // 重置邮件来源状态
+  emailSource = {
+    type: 'manual',
+    wasEdited: false,
+    loadedFromTemplate: false,
+    loadedFromDraft: false,
+    isReply: false
+  };
   
   console.log('✅ 表单已清空');
 }
@@ -1576,7 +1811,7 @@ function stopLoadingDots() {
 
 // AI生成邮件
 async function aiEnrichEmail() {
-  const title = document.getElementById('emailSubject').value.trim();
+  const title = document.getElementById('emailTitle').value.trim();
   const content = document.getElementById('emailContent').value.trim();
   
   if (!title && !content) {
@@ -1679,7 +1914,7 @@ async function aiEnrichEmail() {
               </button>
             </div>
           </div>
-          <div class="ai-result-content">${aiGeneratedContent}</div>
+          <textarea class="ai-preview-textarea" readonly style="width: 100% !important; height: 200px !important; background-color: #f8f9fa !important; border: 1px solid #ced4da !important; border-radius: 0.375rem !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; line-height: 1.5 !important; resize: vertical !important; cursor: not-allowed !important; color: #212529 !important; opacity: 0.8 !important;">${aiGeneratedContent}</textarea>
         </div>
       `;
     } else {
@@ -1697,7 +1932,7 @@ async function aiEnrichEmail() {
 
 // 翻译邮件
 async function translateEmail(targetLanguage = null) {
-  const title = document.getElementById('emailSubject').value.trim();
+  const title = document.getElementById('emailTitle').value.trim();
   const content = document.getElementById('emailContent').value.trim();
   
   if (!title && !content) {
@@ -1805,7 +2040,7 @@ async function translateEmail(targetLanguage = null) {
               </button>
             </div>
           </div>
-          <div class="ai-result-content">${aiGeneratedContent}</div>
+          <textarea class="ai-preview-textarea" readonly style="width: 100% !important; height: 200px !important; background-color: #f8f9fa !important; border: 1px solid #ced4da !important; border-radius: 0.375rem !important; padding: 0.375rem 0.75rem !important; font-size: 1rem !important; line-height: 1.5 !important; resize: vertical !important; cursor: not-allowed !important; color: #212529 !important; opacity: 0.8 !important;">${aiGeneratedContent}</textarea>
         </div>
       `;
     } else {
@@ -1823,7 +2058,7 @@ async function translateEmail(targetLanguage = null) {
 
 // 应用AI标题
 function applyAITitle() {
-  document.getElementById('emailSubject').value = aiGeneratedTitle;
+  document.getElementById('emailTitle').value = aiGeneratedTitle;
   document.getElementById('aiTitlePreview').style.display = 'none';
   showSuccess('标题已替换');
 }
@@ -1887,7 +2122,218 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 500);
   }, 3000);
 }
+
+// ==================== 草稿箱功能 ====================
+
+// 保存草稿 - 显示模态框
+function saveDraft() {
+  // 清空输入框
+  document.getElementById('draftNameInput').value = '';
+  
+  // 显示模态框
+  const modal = new bootstrap.Modal(document.getElementById('saveDraftModal'));
+  modal.show();
+}
+
+// 确认保存草稿
+async function confirmSaveDraft() {
+  const draftName = document.getElementById('draftNameInput').value.trim();
+  
+  // 关闭模态框
+  const modal = bootstrap.Modal.getInstance(document.getElementById('saveDraftModal'));
+  if (modal) modal.hide();
+  
+  showLoading();
+  const result = await EmailDraftManager.saveToDrafts(draftName || null, false);
+  hideLoading();
+  
+  if (result) {
+    // 保存成功后清除localStorage缓存
+    EmailDraftManager.clearCache();
+  }
+}
+
+// 显示草稿箱模态框
+async function showDraftsModal() {
+  const modal = new bootstrap.Modal(document.getElementById('draftsModal'));
+  modal.show();
+  await loadDrafts();
+}
+
+// 加载草稿列表
+async function loadDrafts(page = 1) {
+  try {
+    const token = localStorage.getItem('authToken');
+    
+    showLoading();
+    const response = await fetch(`/api/email-drafts?page=${page}&pageSize=20&is_auto_save=false`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    hideLoading();
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      renderDraftsList(data.drafts);
+      renderDraftsPagination(data.pagination);
+    } else {
+      showError('加载草稿失败: ' + data.message);
+    }
+  } catch (error) {
+    hideLoading();
+    console.error('加载草稿失败:', error);
+    showError('加载草稿失败');
+  }
+}
+
+// 渲染草稿列表
+function renderDraftsList(drafts) {
+  const listContainer = document.getElementById('draftsList');
+  
+  if (!drafts || drafts.length === 0) {
+    listContainer.innerHTML = `
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+        <p class="mt-3">暂无草稿</p>
+      </div>
+    `;
+    return;
+  }
+  
+  listContainer.innerHTML = drafts.map(draft => `
+    <div class="list-group-item list-group-item-action">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1" style="cursor: pointer;" onclick="useDraft(${draft.id})">
+          <h6 class="mb-1">${draft.draft_name || draft.title || '(无标题)'}</h6>
+          <p class="mb-1 text-muted small">${(draft.content || '').substring(0, 100)}${draft.content && draft.content.length > 100 ? '...' : ''}</p>
+          <small class="text-muted">
+            <i class="bi bi-clock"></i> ${new Date(draft.updated_at).toLocaleString()}
+            ${draft.recipients && draft.recipients.length > 0 ? ` | <i class="bi bi-people"></i> ${draft.recipients.length}位收件人` : ''}
+          </small>
+        </div>
+        <div class="btn-group-vertical btn-group-sm ms-2">
+          <button class="btn btn-outline-primary" onclick="event.stopPropagation(); useDraft(${draft.id})" title="使用此草稿">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-outline-danger" onclick="event.stopPropagation(); deleteDraftConfirm(${draft.id})" title="删除">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 渲染分页
+function renderDraftsPagination(pagination) {
+  const container = document.getElementById('draftsPagination');
+  
+  if (!pagination || pagination.totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  let html = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
+  
+  // 上一页
+  html += `
+    <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="event.preventDefault(); loadDrafts(${pagination.page - 1})">上一页</a>
+    </li>
+  `;
+  
+  // 页码
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    if (i === 1 || i === pagination.totalPages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+      html += `
+        <li class="page-item ${i === pagination.page ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="event.preventDefault(); loadDrafts(${i})">${i}</a>
+        </li>
+      `;
+    } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+      html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    }
+  }
+  
+  // 下一页
+  html += `
+    <li class="page-item ${pagination.page === pagination.totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="event.preventDefault(); loadDrafts(${pagination.page + 1})">下一页</a>
+    </li>
+  `;
+  
+  html += '</ul></nav>';
+  container.innerHTML = html;
+}
+
+// 使用草稿 - 显示确认模态框
+function useDraft(draftId) {
+  const modal = new bootstrap.Modal(document.getElementById('useDraftConfirmModal'));
+  modal.show();
+  
+  // 设置确认按钮的点击事件
+  document.getElementById('confirmUseDraftBtn').onclick = async function() {
+    modal.hide();
+    await performUseDraft(draftId);
+  };
+}
+
+// 执行使用草稿
+async function performUseDraft(draftId) {
+  showLoading();
+  const draft = await EmailDraftManager.loadDraft(draftId);
+  hideLoading();
+  
+  if (draft) {
+    // 标记为从草稿加载
+    emailSource.type = 'draft';
+    emailSource.loadedFromDraft = true;
+    emailSource.wasEdited = false; // 刚加载时未编辑
+    
+    // 关闭草稿箱模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('draftsModal'));
+    if (modal) modal.hide();
+  }
+}
+
+// 删除草稿 - 显示确认模态框
+function deleteDraftConfirm(draftId) {
+  const modal = new bootstrap.Modal(document.getElementById('deleteDraftConfirmModal'));
+  modal.show();
+  
+  // 设置确认按钮的点击事件
+  document.getElementById('confirmDeleteDraftBtn').onclick = async function() {
+    modal.hide();
+    await performDeleteDraft(draftId);
+  };
+}
+
+// 执行删除草稿
+async function performDeleteDraft(draftId) {
+  showLoading();
+  const success = await EmailDraftManager.deleteDraft(draftId);
+  hideLoading();
+  
+  if (success) {
+    // 重新加载草稿列表
+    await loadDrafts();
+  }
+}
+
+// 发送邮件成功后清除缓存
+const originalSendEmail = sendEmail;
+sendEmail = function() {
+  originalSendEmail().then(success => {
+    if (success) {
+      // 清除localStorage缓存
+      EmailDraftManager.clearCache();
+    }
+  });
+};
 </script>
 
-
+<!-- 引入草稿管理JS -->
+<script src="/js/email-draft.js"></script>
 
