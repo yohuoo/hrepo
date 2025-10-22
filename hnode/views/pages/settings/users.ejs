@@ -214,7 +214,15 @@ async function loadUsers(page = 1) {
     const data = await response.json();
     
     if (!data.success) {
-      showError('加载用户列表失败');
+      if (response.status === 403) {
+        showError('权限不足：只有管理员才能查看用户列表');
+        // 清除加载状态，显示权限不足提示
+        renderPermissionDenied();
+      } else {
+        showError('加载用户列表失败：' + (data.message || '未知错误'));
+        // 清除加载状态，显示错误提示
+        renderErrorState();
+      }
       return;
     }
     
@@ -227,6 +235,44 @@ async function loadUsers(page = 1) {
     console.error('加载用户列表失败:', error);
     showError('加载用户列表失败');
   }
+}
+
+// 渲染权限不足状态
+function renderPermissionDenied() {
+  const tbody = document.getElementById('userTableBody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center p-5">
+        <div class="empty-state">
+          <i class="bi bi-shield-exclamation text-warning" style="font-size: 3rem;"></i>
+          <h5 class="mt-3">权限不足</h5>
+          <p class="text-muted">只有管理员才能查看用户列表</p>
+          <p class="text-muted small">请联系系统管理员获取相应权限</p>
+        </div>
+      </td>
+    </tr>
+  `;
+  document.getElementById('userCount').textContent = '权限不足';
+}
+
+// 渲染错误状态
+function renderErrorState() {
+  const tbody = document.getElementById('userTableBody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center p-5">
+        <div class="empty-state">
+          <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+          <h5 class="mt-3">加载失败</h5>
+          <p class="text-muted">无法加载用户列表</p>
+          <button class="btn btn-outline-primary btn-sm mt-2" onclick="loadUsers(1)">
+            <i class="bi bi-arrow-clockwise"></i> 重试
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
+  document.getElementById('userCount').textContent = '加载失败';
 }
 
 // 渲染用户表格
